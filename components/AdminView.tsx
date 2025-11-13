@@ -5,7 +5,8 @@ import {
     TruckIcon, CalendarDaysIcon, ChartBarIcon, MegaphoneIcon, 
     ExclamationTriangleIcon, LogoutIcon, SparklesIcon, BuildingOffice2Icon,
     CubeTransparentIcon, CheckBadgeIcon, ArchiveBoxIcon, CreditCardIcon, DocumentTextIcon, BuildingStorefrontIcon,
-    ShoppingBagIcon, UserIcon, ArrowPathRoundedSquareIcon, RocketLaunchIcon, ClipboardListIcon
+    ShoppingBagIcon, UserIcon, ArrowPathRoundedSquareIcon, RocketLaunchIcon, ClipboardListIcon,
+    UploadIcon
 } from './Icons';
 
 type AdminViewType = 
@@ -45,7 +46,7 @@ const AdminView: React.FC<AdminViewProps> = ({ onLogout }) => {
 
       // Sourcing & Publishing
       case 'SUPPLIERS': return <SupplierManagementView />;
-      case 'SUPPLIES_CURATION': return <SuppliesCurationView products={sourcedProducts} />;
+      case 'SUPPLIES_CURATION': return <SuppliesCurationView products={sourcedProducts} setSourcedProducts={setSourcedProducts} />;
       case 'PRODUCT_PUBLISHING': return <ProductPublishingView products={sourcedProducts.filter(p => p.publishStatus === 'unpublished')} onPublish={handlePublishProduct} />;
       case 'PUBLISHED_RETAIL': return <PublishedProductsView title="Published Products (Retail)" products={sourcedProducts.filter(p => p.publishStatus === 'published' && p.publishTarget?.includes('retail'))} />;
       case 'PUBLISHED_WHOLESALE': return <PublishedProductsView title="Published Products (Wholesale)" products={sourcedProducts.filter(p => p.publishStatus === 'published' && p.publishTarget?.includes('wholesale'))} />;
@@ -240,11 +241,59 @@ const BusinessCustomersView: React.FC = () => {
 };
 
 // Sourcing & Publishing Views
-const SuppliesCurationView: React.FC<{ products: SourcedProduct[] }> = ({ products }) => {
-    // 1. Find the cheapest product for each base product name.
+const SuppliesCurationView: React.FC<{ products: SourcedProduct[], setSourcedProducts: React.Dispatch<React.SetStateAction<SourcedProduct[]>> }> = ({ products, setSourcedProducts }) => {
+    const [filters, setFilters] = useState({ name: '', category: 'all', supplier: 'all' });
+    const [uploadedFiles, setUploadedFiles] = useState<FileList | null>(null);
+
+    // Dynamic options for filters
+    const categories = useMemo(() => [...new Set(products.map(p => p.category).filter(Boolean))], [products]);
+    const suppliers = useMemo(() => [...new Set(products.map(p => p.supplierName).filter(Boolean))], [products]);
+    
+    // Memoized filtering logic
+    const filteredProducts = useMemo(() => {
+        return products.filter(p => {
+            const nameMatch = p.name.toLowerCase().includes(filters.name.toLowerCase()) || (p.baseProductName || '').toLowerCase().includes(filters.name.toLowerCase());
+            const categoryMatch = filters.category === 'all' || p.category === filters.category;
+            const supplierMatch = filters.supplier === 'all' || p.supplierName === filters.supplier;
+            return nameMatch && categoryMatch && supplierMatch;
+        });
+    }, [products, filters]);
+
+    // Handlers
+    const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        setFilters(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setUploadedFiles(e.target.files);
+    };
+
+    const handleAnalyzeAndAdd = () => {
+        if (!uploadedFiles || uploadedFiles.length === 0) {
+            alert('Please select at least one file to upload.');
+            return;
+        }
+
+        // --- AI Simulation ---
+        // In a real application, you would parse the files (e.g., CSV) and use an AI service
+        // to normalize and suggest products. Here, we'll simulate this by adding mock data.
+        const newProducts: SourcedProduct[] = [
+            { id: `sp_new_${Date.now()}`, name: 'Kale', baseProductName: 'Kale', supplierId: 'f3', supplierName: 'Riverbend Gardens', costPrice: 2.20, unit: 'bunch', imageUrl: 'https://picsum.photos/id/500/400/300', category: 'Vegetable', publishStatus: 'unpublished', availableQuantity: 100 },
+            { id: `sp_new_${Date.now()+1}`, name: 'Organic Blueberries', baseProductName: 'Blueberries', supplierId: 'f2', supplierName: 'Sunnyvale Orchards', costPrice: 4.50, unit: 'pint', imageUrl: 'https://picsum.photos/id/1083/400/300', category: 'Fruit', publishStatus: 'unpublished', availableQuantity: 80 },
+        ];
+        
+        setSourcedProducts(prev => [...prev, ...newProducts]);
+        alert(`${uploadedFiles.length} file(s) analyzed and new products have been added to the table.`);
+        const fileInput = document.getElementById('file-upload-input') as HTMLInputElement;
+        if (fileInput) fileInput.value = ''; // Reset file input
+        setUploadedFiles(null);
+    };
+
+    // 1. Find the cheapest product for each base product name using the filtered list.
     const cheapestProductsMap = useMemo(() => {
         const groups: { [key: string]: SourcedProduct[] } = {};
-        products.forEach(p => {
+        filteredProducts.forEach(p => {
             const key = p.baseProductName || p.name;
             if (!groups[key]) groups[key] = [];
             groups[key].push(p);
@@ -258,11 +307,11 @@ const SuppliesCurationView: React.FC<{ products: SourcedProduct[] }> = ({ produc
             }
         });
         return cheapestMap;
-    }, [products]);
+    }, [filteredProducts]);
 
-    // 2. Sort products to group them visually in the table and add a flag for the first item in each category
+    // 2. Sort products to group them visually in the table, now using the filtered list
     const processedProducts = useMemo(() => {
-        const sorted = [...products].sort((a, b) => {
+        const sorted = [...filteredProducts].sort((a, b) => {
             const nameA = a.baseProductName || a.name;
             const nameB = b.baseProductName || b.name;
             if (nameA < nameB) return -1;
@@ -279,12 +328,49 @@ const SuppliesCurationView: React.FC<{ products: SourcedProduct[] }> = ({ produc
             }
             return { ...p, isFirstInCategory: isFirst };
         });
-    }, [products]);
+    }, [filteredProducts]);
 
     return (
         <div>
             <h1 className="text-3xl font-bold mb-2 text-gray-800">Supplies & Product Curation</h1>
-            <p className="text-gray-600 mb-6">Analyze product offerings from all suppliers to make the best procurement decisions in a centralized view.</p>
+            <p className="text-gray-600 mb-6">Analyze product offerings from all suppliers to make the best procurement decisions.</p>
+
+            <div className="bg-white p-6 rounded-lg shadow-md mb-8">
+                <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">Upload & Analyze Supplier Lists</h3>
+                <div className="flex items-center gap-4">
+                    <input 
+                        id="file-upload-input"
+                        type="file" 
+                        multiple 
+                        onChange={handleFileChange} 
+                        className="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" 
+                    />
+                    <button 
+                        onClick={handleAnalyzeAndAdd} 
+                        disabled={!uploadedFiles || uploadedFiles.length === 0} 
+                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-indigo-700 flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    >
+                        <SparklesIcon className="w-5 h-5" /> Analyze & Add
+                    </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">Upload supplier price lists (e.g., CSV) to analyze and add them to the curation table below.</p>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+                <h3 className="text-lg font-semibold text-gray-700 mb-4">Filters</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <input type="text" name="name" placeholder="Filter by name..." value={filters.name} onChange={handleFilterChange} className="p-2 border rounded-md" />
+                    <select name="category" value={filters.category} onChange={handleFilterChange} className="p-2 border rounded-md bg-white">
+                        <option value="all">All Categories</option>
+                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <select name="supplier" value={filters.supplier} onChange={handleFilterChange} className="p-2 border rounded-md bg-white">
+                        <option value="all">All Suppliers</option>
+                        {suppliers.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                </div>
+            </div>
+
             <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
                 <table className="w-full text-left text-sm">
                     <thead className="border-b bg-gray-50">
@@ -329,6 +415,11 @@ const SuppliesCurationView: React.FC<{ products: SourcedProduct[] }> = ({ produc
                                 </tr>
                             );
                         })}
+                         {filteredProducts.length === 0 && (
+                            <tr>
+                                <td colSpan={8} className="text-center p-8 text-gray-500">No products match the current filters.</td>
+                            </tr>
+                        )}
                     </tbody>
                 </table>
             </div>
