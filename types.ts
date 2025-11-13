@@ -261,3 +261,23 @@ export interface Invoice {
   amount: number;
   status: 'Paid' | 'Pending' | 'Overdue';
 }
+
+export interface AISuggestion {
+  name: string;
+  reason: string;
+}
+
+export interface RecipeIngredient {
+  name: string;
+  quantity: string;
+  isStoreItem: boolean;
+}
+
+export interface Recipe {
+  id: string;
+  name:string;
+  description: string;
+  imageUrl: string;
+  ingredients: RecipeIngredient[];
+  instructions: string[];
+}

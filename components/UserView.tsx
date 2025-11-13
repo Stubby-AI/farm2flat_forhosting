@@ -1,10 +1,11 @@
 
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useCart } from '../hooks/useCart';
 import { mockProducts, mockSubscriptionBoxes, mockUser, mockOrders, mockSourcedProducts } from '../mock/data';
-import { Product, SubscriptionBox, SubscriptionFrequency, User, CartItem, Order } from '../types';
-import { getPersonalizedSuggestions } from '../services/geminiService';
-import { ShoppingCartIcon, LeafIcon, UserIcon, TrashIcon, PlusIcon, MinusIcon, ArrowRightIcon, MapPinIcon, HeartIcon, CogIcon } from './Icons';
+import { Product, SubscriptionBox, SubscriptionFrequency, User, CartItem, Order, AISuggestion, Recipe } from '../types';
+import { getPersonalizedSuggestions, generateRecipes } from '../services/geminiService';
+import { ShoppingCartIcon, LeafIcon, UserIcon, TrashIcon, PlusIcon, MinusIcon, ArrowRightIcon, MapPinIcon, HeartIcon, CogIcon, BookOpenIcon } from './Icons';
 
 type UserViewType = 'SHOP' | 'SUBSCRIPTIONS' | 'CART' | 'PROFILE' | 'AUTH' | 'CHECKOUT' | 'GATEWAY' | 'CONFIRMATION';
 type OrderWindow = 'Wednesday' | 'Sunday';
@@ -169,11 +170,21 @@ const ProductCard: React.FC<{ product: Product; onAddToCart: (product: Product) 
 );
 
 
-const SubscriptionCard: React.FC<{ subscription: SubscriptionBox; onAddToCart: (sub: SubscriptionBox, options: { frequency: SubscriptionFrequency; isTrial?: boolean }) => void }> = ({ subscription, onAddToCart }) => {
+const SubscriptionCard: React.FC<{ 
+    subscription: SubscriptionBox; 
+    onAddToCart: (sub: SubscriptionBox, options: { frequency: SubscriptionFrequency; isTrial?: boolean }) => void;
+    isSubscribed: boolean;
+    onManageSubscription: () => void;
+}> = ({ subscription, onAddToCart, isSubscribed, onManageSubscription }) => {
     const [frequency, setFrequency] = useState<SubscriptionFrequency>(SubscriptionFrequency.Weekly);
 
     return (
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden flex flex-col md:flex-row">
+        <div className={`bg-white rounded-lg shadow-lg overflow-hidden flex flex-col md:flex-row relative ${isSubscribed ? 'border-2 border-green-500' : ''}`}>
+            {isSubscribed && (
+                <div className="absolute top-0 right-0 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg z-10">
+                    SUBSCRIBED
+                </div>
+            )}
             <img src={subscription.imageUrl} alt={`${subscription.type} Box`} className="md:w-1/3 h-64 md:h-auto object-cover" />
             <div className="p-6 flex-1">
                 <h3 className="text-2xl font-bold text-gray-800">{subscription.type} Box - {subscription.size}</h3>
@@ -182,11 +193,19 @@ const SubscriptionCard: React.FC<{ subscription: SubscriptionBox; onAddToCart: (
                 <p className="text-sm text-gray-500 mt-2">Example contents: {subscription.contentsSample.join(', ')}</p>
                 <p className="text-2xl font-bold text-gray-900 my-4">${subscription.price.toFixed(2)}</p>
                 <div className="flex flex-wrap gap-4 items-center">
-                     <select value={frequency} onChange={(e) => setFrequency(e.target.value as SubscriptionFrequency)} className="border rounded-md px-3 py-2">
-                        {Object.values(SubscriptionFrequency).map(freq => <option key={freq} value={freq}>{freq}</option>)}
-                    </select>
-                    <button onClick={() => onAddToCart(subscription, { frequency })} className="bg-green-500 text-white px-5 py-2 rounded-lg font-semibold hover:bg-green-600 transition">Subscribe</button>
-                    <button onClick={() => onAddToCart(subscription, { frequency, isTrial: true })} className="bg-orange-500 text-white px-5 py-2 rounded-lg font-semibold hover:bg-orange-600 transition">One-time Trial</button>
+                    {isSubscribed ? (
+                         <button onClick={onManageSubscription} className="bg-gray-600 text-white px-5 py-2 rounded-lg font-semibold hover:bg-gray-700 transition flex items-center gap-2">
+                             <CogIcon className="w-5 h-5" /> Manage Subscription
+                         </button>
+                    ) : (
+                        <>
+                            <select value={frequency} onChange={(e) => setFrequency(e.target.value as SubscriptionFrequency)} className="border rounded-md px-3 py-2">
+                                {Object.values(SubscriptionFrequency).map(freq => <option key={freq} value={freq}>{freq}</option>)}
+                            </select>
+                            <button onClick={() => onAddToCart(subscription, { frequency })} className="bg-green-500 text-white px-5 py-2 rounded-lg font-semibold hover:bg-green-600 transition">Subscribe</button>
+                            <button onClick={() => onAddToCart(subscription, { frequency, isTrial: true })} className="bg-orange-500 text-white px-5 py-2 rounded-lg font-semibold hover:bg-orange-600 transition">One-time Trial</button>
+                        </>
+                    )}
                 </div>
             </div>
         </div>
@@ -382,20 +401,23 @@ const ConfirmationView: React.FC<{ onContinue: () => void }> = ({ onContinue }) 
 );
 
 
-const PersonalizedSuggestions: React.FC<{ user: User; onGetSuggestions: () => void; suggestions: string[]; isLoading: boolean; }> = ({ user, onGetSuggestions, suggestions, isLoading }) => (
+const PersonalizedSuggestions: React.FC<{ user: User; onGetSuggestions: () => void; suggestions: AISuggestion[]; isLoading: boolean; }> = ({ user, onGetSuggestions, suggestions, isLoading }) => (
     <div className="my-12 bg-green-50 border-2 border-green-200 border-dashed rounded-lg p-8 text-center">
         <h3 className="text-2xl font-bold text-green-800 mb-2">Just for you, {user.name.split(' ')[0]}!</h3>
         <p className="text-green-700 mb-4">Based on your recent orders, here are some fresh picks we think you'll love.</p>
         <button onClick={onGetSuggestions} disabled={isLoading} className="bg-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-700 transition disabled:bg-gray-400">
             {isLoading ? 'Thinking...' : 'Get AI Suggestions'}
         </button>
-        {suggestions.length > 0 && (
+        {suggestions.length > 0 && !suggestions[0]?.name.includes('Error') && (
             <div className="mt-6">
-                <ul className="flex flex-wrap justify-center gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {suggestions.map((item, index) => (
-                        <li key={index} className="bg-white text-green-800 px-4 py-2 rounded-full shadow-sm">{item}</li>
+                        <div key={index} className="bg-white p-4 rounded-lg shadow-sm text-left">
+                            <p className="font-bold text-green-800">{item.name}</p>
+                            <p className="text-sm text-green-700">{item.reason}</p>
+                        </div>
                     ))}
-                </ul>
+                </div>
             </div>
         )}
     </div>
@@ -477,8 +499,18 @@ const BudgetTracker: React.FC<{ user: User }> = ({ user }) => {
     );
 };
 
-const ProfileView: React.FC<{ user: User; onUpdateUser: (updatedUser: User) => void; onToggleRegular: (productId: string) => void; onAddToCart: (product: Product) => void; }> = ({ user, onUpdateUser, onToggleRegular, onAddToCart }) => {
-    const [activeTab, setActiveTab] = useState<'orders' | 'subscriptions' | 'regulars' | 'preferences' | 'manage'>('orders');
+const ProfileView: React.FC<{ 
+    user: User; 
+    onUpdateUser: (updatedUser: User) => void; 
+    onToggleRegular: (productId: string) => void; 
+    onAddToCart: (product: Product) => void;
+    initialTab?: 'orders' | 'subscriptions' | 'regulars' | 'preferences' | 'manage';
+}> = ({ user, onUpdateUser, onToggleRegular, onAddToCart, initialTab = 'orders' }) => {
+    const [activeTab, setActiveTab] = useState<'orders' | 'subscriptions' | 'regulars' | 'preferences' | 'manage'>(initialTab);
+    
+    useEffect(() => {
+        setActiveTab(initialTab);
+    }, [initialTab]);
     
     const activeSubscriptions = user.orderHistory
         .flatMap(o => o.items)
@@ -654,16 +686,128 @@ const ProfileView: React.FC<{ user: User; onUpdateUser: (updatedUser: User) => v
 };
 // #endregion
 
+const RecipeDetailModal: React.FC<{
+    recipe: Recipe;
+    availableProducts: Product[];
+    onClose: () => void;
+    onAddToCart: (items: { product: Product; quantity: number }[]) => void;
+}> = ({ recipe, availableProducts, onClose, onAddToCart }) => {
+    const [selectedIngredients, setSelectedIngredients] = useState<Set<string>>(new Set());
+    
+    useEffect(() => {
+        const storeItems = new Set<string>();
+        recipe.ingredients.forEach(ing => {
+            if (ing.isStoreItem) {
+                const productMatch = availableProducts.find(p => p.name.toLowerCase().includes(ing.name.toLowerCase()));
+                if (productMatch) {
+                    storeItems.add(productMatch.id);
+                }
+            }
+        });
+        setSelectedIngredients(storeItems);
+    }, [recipe, availableProducts]);
+
+    const handleToggleIngredient = (productId: string) => {
+        setSelectedIngredients(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(productId)) {
+                newSet.delete(productId);
+            } else {
+                newSet.add(productId);
+            }
+            return newSet;
+        });
+    };
+
+    const handleAddToCart = () => {
+        const itemsToAdd = Array.from(selectedIngredients).map(productId => {
+            const product = availableProducts.find(p => p.id === productId);
+            return product ? { product, quantity: 1 } : null;
+        }).filter((item): item is { product: Product; quantity: number } => item !== null);
+        
+        onAddToCart(itemsToAdd);
+        onClose();
+    };
+
+    const storeIngredients = recipe.ingredients.filter(i => i.isStoreItem).map(ing => {
+        const productMatch = availableProducts.find(p => p.name.toLowerCase().includes(ing.name.toLowerCase()));
+        return { ...ing, product: productMatch };
+    });
+    const pantryIngredients = recipe.ingredients.filter(i => !i.isStoreItem);
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div className="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
+                    <h3 className="text-2xl font-bold text-gray-800">{recipe.name}</h3>
+                    <button onClick={onClose} className="text-gray-500 hover:text-gray-800 text-3xl font-bold">&times;</button>
+                </div>
+                <div className="p-6">
+                    <img src={recipe.imageUrl} alt={recipe.name} className="w-full h-64 object-cover rounded-md mb-4"/>
+                    <p className="text-gray-600 mb-6">{recipe.description}</p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 className="text-lg font-semibold mb-2">Ingredients</h4>
+                            <h5 className="font-bold text-sm text-green-700 mt-4 mb-2">From FrescoHub</h5>
+                            <ul className="space-y-2">
+                                {storeIngredients.map((ing, i) => (
+                                    <li key={i} className="flex items-center">
+                                        <input 
+                                            type="checkbox" 
+                                            id={`ing-${ing.product?.id || i}`}
+                                            checked={ing.product ? selectedIngredients.has(ing.product.id) : false}
+                                            onChange={() => ing.product && handleToggleIngredient(ing.product.id)}
+                                            disabled={!ing.product}
+                                            className="h-4 w-4 text-green-600 border-gray-300 rounded disabled:opacity-50"
+                                        />
+                                        <label htmlFor={`ing-${ing.product?.id || i}`} className={`ml-2 ${!ing.product ? 'text-gray-400 line-through' : ''}`}>
+                                            {ing.quantity} {ing.name} {!ing.product ? '(Not in store)' : ''}
+                                        </label>
+                                    </li>
+                                ))}
+                            </ul>
+
+                             <h5 className="font-bold text-sm text-gray-600 mt-4 mb-2">Pantry Staples</h5>
+                             <ul className="space-y-1 text-sm text-gray-500 list-disc list-inside">
+                                {pantryIngredients.map((ing, i) => <li key={i}>{ing.quantity} {ing.name}</li>)}
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 className="text-lg font-semibold mb-2">Instructions</h4>
+                            <ol className="list-decimal list-inside space-y-2 text-gray-700">
+                                {recipe.instructions.map((step, i) => <li key={i}>{step}</li>)}
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+                <div className="sticky bottom-0 bg-gray-50 p-4 border-t flex justify-end gap-4">
+                    <button onClick={onClose} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-semibold hover:bg-gray-300">Close</button>
+                    <button onClick={handleAddToCart} className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-400" disabled={selectedIngredients.size === 0}>
+                        Add {selectedIngredients.size} items to Cart
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const UserView: React.FC = () => {
     const [currentView, setCurrentView] = useState<UserViewType>('SHOP');
     const [postalCode, setPostalCode] = useState(mockUser.postalCode);
     const [selectedDeadline, setSelectedDeadline] = useState<OrderWindow>('Sunday');
     
-    const [suggestions, setSuggestions] = useState<string[]>([]);
+    const [suggestions, setSuggestions] = useState<AISuggestion[]>([]);
     const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
     
+    const [recipes, setRecipes] = useState<Recipe[]>([]);
+    const [isLoadingRecipes, setIsLoadingRecipes] = useState(false);
+    const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
+    
+    const [profileInitialTab, setProfileInitialTab] = useState<'orders' | 'subscriptions' | 'regulars' | 'preferences' | 'manage'>('orders');
 
     const cart = useCart();
     
@@ -686,6 +830,19 @@ const UserView: React.FC = () => {
             quantity: p.availableQuantity,
         })), []);
 
+    const activeSubscriptions = useMemo(() => {
+        if (!currentUser) return new Set<string>();
+        const subIds = new Set<string>();
+        currentUser.orderHistory.forEach(order => {
+            order.items.forEach(item => {
+                if (item.type === 'subscription' && !item.isTrial) {
+                    subIds.add(item.id);
+                }
+            });
+        });
+        return subIds;
+    }, [currentUser]);
+
     const handleGetSuggestions = useCallback(async () => {
         setIsLoadingSuggestions(true);
         const productsInHistory = (currentUser || mockUser).orderHistory
@@ -697,6 +854,19 @@ const UserView: React.FC = () => {
         setSuggestions(result);
         setIsLoadingSuggestions(false);
     }, [currentUser]);
+
+    const handleGenerateRecipes = useCallback(async () => {
+        setIsLoadingRecipes(true);
+        const result = await generateRecipes(retailProducts);
+        setRecipes(result);
+        setIsLoadingRecipes(false);
+    }, [retailProducts]);
+
+    const handleAddRecipeItemsToCart = (items: { product: Product; quantity: number }[]) => {
+        items.forEach(item => {
+            cart.addToCart(item.product);
+        });
+    };
     
     const handleToggleRegular = (productId: string) => {
         if (!currentUser) return;
@@ -761,13 +931,56 @@ const UserView: React.FC = () => {
         setSelectedDeadline(window);
     };
 
+    const handleNavigate = (view: UserViewType) => {
+        if (view === 'PROFILE') {
+            setProfileInitialTab('orders');
+        }
+        setCurrentView(view);
+    };
+    
+    const handleManageSubscription = () => {
+        setProfileInitialTab('subscriptions');
+        setCurrentView('PROFILE');
+    };
+
     const renderContent = () => {
         switch (currentView) {
             case 'SHOP':
                 return (
                      <div className="container mx-auto px-6 py-8">
                         <PersonalizedSuggestions user={currentUser || mockUser} onGetSuggestions={handleGetSuggestions} suggestions={suggestions} isLoading={isLoadingSuggestions} />
-                        <h2 className="text-3xl font-bold text-gray-800 mb-6">Fresh from the Farm</h2>
+                        
+                        <div className="my-12">
+                            <div className="text-center mb-8">
+                                <h2 className="text-3xl font-bold text-gray-800 flex items-center justify-center gap-3">
+                                    <BookOpenIcon className="w-8 h-8 text-green-600" />
+                                    Meal Ideas & Recipes
+                                </h2>
+                                <p className="text-gray-600 mt-2">Discover delicious meals you can make with our fresh ingredients.</p>
+                                <button 
+                                    onClick={handleGenerateRecipes} 
+                                    disabled={isLoadingRecipes}
+                                    className="mt-4 bg-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-700 transition disabled:bg-gray-400"
+                                >
+                                    {isLoadingRecipes ? 'Generating...' : '✨ Generate with AI'}
+                                </button>
+                            </div>
+                            {recipes.length > 0 && (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                    {recipes.map(recipe => (
+                                        <div key={recipe.id} onClick={() => setSelectedRecipe(recipe)} className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer transform hover:scale-105 transition-transform duration-300 group">
+                                            <img src={recipe.imageUrl} alt={recipe.name} className="w-full h-48 object-cover" />
+                                            <div className="p-4">
+                                                <h3 className="text-lg font-semibold text-gray-800">{recipe.name}</h3>
+                                                <p className="text-sm text-gray-600 mt-1 line-clamp-2">{recipe.description}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <h2 className="text-3xl font-bold text-gray-800 mb-6 border-t pt-8">Fresh from the Farm</h2>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                             {retailProducts.map(p => (
                                 <ProductCard 
@@ -786,7 +999,15 @@ const UserView: React.FC = () => {
                     <div className="container mx-auto px-6 py-8">
                         <h2 className="text-3xl font-bold text-gray-800 mb-6">Subscription Boxes</h2>
                         <div className="space-y-8">
-                            {mockSubscriptionBoxes.map(s => <SubscriptionCard key={s.id} subscription={s} onAddToCart={cart.addToCart} />)}
+                            {mockSubscriptionBoxes.map(s => 
+                                <SubscriptionCard 
+                                    key={s.id} 
+                                    subscription={s} 
+                                    onAddToCart={cart.addToCart} 
+                                    isSubscribed={isAuthenticated && activeSubscriptions.has(s.id)}
+                                    onManageSubscription={handleManageSubscription}
+                                />
+                            )}
                         </div>
                     </div>
                 );
@@ -803,7 +1024,7 @@ const UserView: React.FC = () => {
                 return <ConfirmationView onContinue={() => setCurrentView('PROFILE')} />;
             case 'PROFILE':
                  if (!currentUser) return <AuthView onAuthSuccess={handleAuthSuccess} />; // Protect profile route
-                 return <ProfileView user={currentUser} onUpdateUser={setCurrentUser} onToggleRegular={handleToggleRegular} onAddToCart={cart.addToCart} />;
+                 return <ProfileView user={currentUser} onUpdateUser={setCurrentUser} onToggleRegular={handleToggleRegular} onAddToCart={cart.addToCart} initialTab={profileInitialTab} />;
             default:
                 return null;
         }
@@ -811,11 +1032,19 @@ const UserView: React.FC = () => {
 
     return (
         <div className="bg-gray-50 min-h-screen">
-            <Header onNavigate={setCurrentView} cartItemCount={cart.totalItems} postalCode={postalCode} onPostalCodeChange={setPostalCode} isAuthenticated={isAuthenticated} onSignOut={handleSignOut} />
+            <Header onNavigate={handleNavigate} cartItemCount={cart.totalItems} postalCode={postalCode} onPostalCodeChange={setPostalCode} isAuthenticated={isAuthenticated} onSignOut={handleSignOut} />
             <CountdownTimer deadlineDate={deadlineDate} onDeadlineChange={handleDeadlineChange} selectedDeadline={selectedDeadline} />
             <main>
                 {renderContent()}
             </main>
+             {selectedRecipe && (
+                <RecipeDetailModal 
+                    recipe={selectedRecipe} 
+                    availableProducts={retailProducts}
+                    onClose={() => setSelectedRecipe(null)} 
+                    onAddToCart={handleAddRecipeItemsToCart}
+                />
+            )}
             <footer className="bg-gray-200 text-center p-4 mt-8">
                 <p>&copy; 2024 FrescoHub. All rights reserved.</p>
             </footer>

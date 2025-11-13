@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { Product, Order } from "../types";
+import { Product, Order, AISuggestion, Recipe } from "../types";
 
 const API_KEY = process.env.API_KEY;
 
@@ -10,30 +10,46 @@ if (!API_KEY) {
 
 const ai = new GoogleGenAI({ apiKey: API_KEY! });
 
-export const getPersonalizedSuggestions = async (purchaseHistory: Product[]): Promise<string[]> => {
+export const getPersonalizedSuggestions = async (purchaseHistory: Product[]): Promise<AISuggestion[]> => {
   if (!API_KEY) {
-    return Promise.resolve(["API Key not configured. Please set the API_KEY environment variable."]);
+    return Promise.resolve([{ name: "API Key not configured.", reason: "Please set the API_KEY environment variable." }]);
   }
 
   const productNames = purchaseHistory.map(p => p.name).join(', ');
 
   const prompt = `A user frequently buys the following groceries: ${productNames}. 
-  Based on this buying pattern, suggest 5 other fresh produce items they might enjoy.
-  Return the suggestions as a simple comma-separated list. For example: "item1, item2, item3, item4, item5".
-  Do not include any other text or formatting.`;
+  Based on this buying pattern, suggest 3 other fresh produce items they might enjoy. For each item, provide a very short reason why they might like it.`;
 
   try {
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: prompt
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    suggestions: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                name: { type: Type.STRING, description: "Name of the suggested product." },
+                                reason: { type: Type.STRING, description: "A short reason for the suggestion." }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     });
     
-    const text = response.text;
-    return text.split(',').map(item => item.trim());
+    const jsonResponse = JSON.parse(response.text);
+    return jsonResponse.suggestions || [];
 
   } catch (error) {
     console.error("Error fetching suggestions from Gemini API:", error);
-    return ["We had trouble getting suggestions. Please try again later."];
+    return [{ name: "Error", reason: "We had trouble getting suggestions. Please try again later." }];
   }
 };
 
@@ -81,4 +97,70 @@ export const getDemandForecast = async (orders: Order[]): Promise<Record<string,
     // FIX: The return type Record<string, number> requires all values to be numbers.
     return { "Error: Could not retrieve forecast": 0 };
   }
+};
+
+export const generateRecipes = async (availableProducts: Product[]): Promise<Recipe[]> => {
+    if (!API_KEY) {
+        console.error("API Key not configured.");
+        return [];
+    }
+    
+    const productList = availableProducts.map(p => p.name).join(', ');
+
+    const prompt = `Based on the following available fresh produce items: ${productList}, generate 3 unique and appealing recipe ideas. 
+    For each recipe, provide a name, a short description, a detailed list of ingredients, and step-by-step instructions. 
+    For the ingredients, clearly distinguish between items available from the store list and common pantry staples (like oil, salt, pepper, flour).
+    For the imageUrl, provide a URL from picsum.photos with a unique ID for each image that would thematically fit the recipe. Use the format https://picsum.photos/id/XXX/600/400 where XXX is a number between 200 and 400.`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        recipes: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    id: { type: Type.STRING },
+                                    name: { type: Type.STRING },
+                                    description: { type: Type.STRING },
+                                    imageUrl: { type: Type.STRING },
+                                    ingredients: {
+                                        type: Type.ARRAY,
+                                        items: {
+                                            type: Type.OBJECT,
+                                            properties: {
+                                                name: { type: Type.STRING },
+                                                quantity: { type: Type.STRING },
+                                                isStoreItem: { type: Type.BOOLEAN }
+                                            }
+                                        }
+                                    },
+                                    instructions: {
+                                        type: Type.ARRAY,
+                                        items: { type: Type.STRING }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        const jsonResponse = JSON.parse(response.text);
+        return jsonResponse.recipes.map((recipe: Recipe, index: number) => ({
+            ...recipe,
+            id: recipe.id || `recipe-${Date.now()}-${index}`
+        }));
+
+    } catch (error) {
+        console.error("Error generating recipes from Gemini API:", error);
+        return [];
+    }
 };
