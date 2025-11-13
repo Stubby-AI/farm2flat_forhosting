@@ -50,6 +50,7 @@ export interface SubscriptionBox {
   description: string;
   contentsSample: string[];
   imageUrl: string;
+  currentContents?: string[]; // Array of product IDs
 }
 
 export interface User {
@@ -66,6 +67,7 @@ export interface User {
     period: 'Weekly' | 'Monthly';
   };
   loyaltyCredits?: number;
+  lifetimeValue?: number;
 }
 
 export type PortalUserRole = 'admin' | 'farmer' | 'business';
@@ -85,11 +87,13 @@ export interface Order {
   date: string;
   items: CartItem[];
   total: number;
-  status: "Pending" | "Processing" | "Delivered";
+  status: "Pending" | "Processing" | "Delivered" | "Packed" | "Dispatched";
   deliveryDetails?: {
     estimatedArrival: string;
     trackingStatus: 'Order Confirmed' | 'Preparing' | 'Out for Delivery' | 'Delivered';
   };
+  orderType?: 'one_time' | 'subscription';
+  paymentStatus?: 'paid' | 'pending' | 'failed';
 }
 
 export interface Hub {
@@ -229,6 +233,31 @@ export interface SourcedProduct {
   unit: string;
   category: string;
   costPrice: number;
-  isPublished: boolean;
+  publishStatus: 'unpublished' | 'published';
   sellingPrice?: number;
+  publishTarget?: ('retail' | 'wholesale')[];
+  baseProductName?: string;
+  availableQuantity?: number;
+}
+
+export interface Payment {
+  id: string;
+  orderId: string;
+  userId: string;
+  userName: string;
+  amount: number;
+  date: string;
+  status: 'Completed' | 'Pending' | 'Failed';
+  method: 'Credit Card' | 'PayPal';
+}
+
+export interface Invoice {
+  id: string;
+  entityId: string;
+  entityName: string;
+  entityType: 'Customer' | 'Supplier';
+  date: string;
+  dueDate: string;
+  amount: number;
+  status: 'Paid' | 'Pending' | 'Overdue';
 }

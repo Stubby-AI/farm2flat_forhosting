@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Business, Product, StaffMember, Supplier, Customer, Order, CartItem } from '../types';
-import { mockBusinessProducts } from '../mock/data';
+import { Business, Product, StaffMember, Supplier, Customer, Order, CartItem, SourcedProduct } from '../types';
+import { mockBusinessProducts, mockSourcedProducts } from '../mock/data';
 import { 
     LogoutIcon, UsersIcon, ChartBarIcon, BoxIcon, ClipboardListIcon, 
     CurrencyDollarIcon, UsersGroupIcon, BuildingStorefrontIcon, ReceiptPercentIcon,
@@ -20,12 +20,14 @@ const BusinessView: React.FC<BusinessViewProps> = ({ business, onLogout }) => {
   const [currentView, setCurrentView] = useState<BusinessViewType>('DASHBOARD');
   const [products, setProducts] = useState<Product[]>(business.products || mockBusinessProducts);
 
-  const addProductToMenu = (product: Product | CartItem) => {
+  const addProductToMenu = (product: Product | CartItem | SourcedProduct) => {
     const newProduct: Product = {
         id: `dup-${product.id}-${Date.now()}`,
         name: product.name,
-        price: product.price,
-        unit: 'unit' in product ? product.unit : '',
+        // FIX: Use 'costPrice' as a reliable property to discriminate SourcedProduct.
+        // The optional 'sellingPrice' is not a safe type guard.
+        price: 'costPrice' in product ? product.sellingPrice || 0 : product.price,
+        unit: 'unit' in product ? product.unit || '' : '',
         imageUrl: product.imageUrl,
         farmer: business.name,
         moq: 1,
@@ -50,7 +52,7 @@ const BusinessView: React.FC<BusinessViewProps> = ({ business, onLogout }) => {
         case 'PURCHASES':
             return <PurchaseManagementView purchases={business.purchaseHistory || []} />;
         case 'FARM2FLAT':
-            return <Farm2FlatView purchaseHistory={business.purchaseHistory || []} onDuplicateProduct={addProductToMenu} />;
+            return <Farm2FlatSourcingView onDuplicateProduct={addProductToMenu} />;
         case 'FINANCIALS':
             return <FinancialsView />;
         case 'STAFF':
@@ -73,7 +75,7 @@ const BusinessView: React.FC<BusinessViewProps> = ({ business, onLogout }) => {
             <NavItem icon={<BoxIcon className="w-5 h-5" />} label="My Products / Menu" active={currentView === 'PRODUCTS'} onClick={() => setCurrentView('PRODUCTS')} />
             <NavItem icon={<ClipboardListIcon className="w-5 h-5" />} label="Customer Orders" active={currentView === 'ORDERS'} onClick={() => setCurrentView('ORDERS')} />
             <NavItem icon={<ReceiptPercentIcon className="w-5 h-5" />} label="My Purchases" active={currentView === 'PURCHASES'} onClick={() => setCurrentView('PURCHASES')} />
-            <NavItem icon={<HomeModernIcon className="w-5 h-5" />} label="Farm2Flat" active={currentView === 'FARM2FLAT'} onClick={() => setCurrentView('FARM2FLAT')} />
+            <NavItem icon={<HomeModernIcon className="w-5 h-5" />} label="Farm2Flat Sourcing" active={currentView === 'FARM2FLAT'} onClick={() => setCurrentView('FARM2FLAT')} />
             <NavItem icon={<CurrencyDollarIcon className="w-5 h-5" />} label="Financials" active={currentView === 'FINANCIALS'} onClick={() => setCurrentView('FINANCIALS')} />
             <hr className="border-blue-700 my-2" />
             <NavItem icon={<UsersGroupIcon className="w-5 h-5" />} label="Staff" active={currentView === 'STAFF'} onClick={() => setCurrentView('STAFF')} />
@@ -240,22 +242,19 @@ const PurchaseManagementView: React.FC<{ purchases: Order[] }> = ({ purchases })
     </div>
 );
 
-const Farm2FlatView: React.FC<{ purchaseHistory: Order[]; onDuplicateProduct: (product: CartItem) => void; }> = ({ purchaseHistory, onDuplicateProduct }) => {
-    const purchasedItems = useMemo(() => {
-        const allItems = purchaseHistory.flatMap(o => o.items);
-        const uniqueItems = new Map<string, CartItem>();
-        allItems.forEach(item => {
-            if (!uniqueItems.has(item.id)) {
-                uniqueItems.set(item.id, item);
-            }
-        });
-        return Array.from(uniqueItems.values());
-    }, [purchaseHistory]);
+const Farm2FlatSourcingView: React.FC<{ onDuplicateProduct: (product: SourcedProduct) => void; }> = ({ onDuplicateProduct }) => {
+    const wholesaleProducts = useMemo(() => {
+        return mockSourcedProducts.filter(p => 
+            p.publishStatus === 'published' && 
+            p.publishTarget?.includes('wholesale') && 
+            (p.availableQuantity ?? 0) > 0
+        );
+    }, []);
 
     return (
         <div>
-             <h1 className="text-3xl font-bold mb-2 text-gray-800">Farm2Flat Supplier Hub</h1>
-             <p className="text-gray-600 mb-6">These are products you've sourced from FrescoHub. You can easily duplicate them to your own menu.</p>
+             <h1 className="text-3xl font-bold mb-2 text-gray-800">Farm2Flat Sourcing Hub</h1>
+             <p className="text-gray-600 mb-6">Source products directly from the FrescoHub wholesale catalog. You can add items to your own menu with one click.</p>
              <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
                 <table className="w-full text-left">
                     <thead>
@@ -263,15 +262,17 @@ const Farm2FlatView: React.FC<{ purchaseHistory: Order[]; onDuplicateProduct: (p
                             <th className="p-4">Product Name</th>
                             <th className="p-4">Price</th>
                             <th className="p-4">Unit</th>
+                            <th className="p-4">Available</th>
                             <th className="p-4">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {purchasedItems.map(item => (
+                        {wholesaleProducts.map(item => (
                             <tr key={item.id} className="border-b hover:bg-gray-50">
                                 <td className="p-4 font-semibold">{item.name}</td>
-                                <td className="p-4">${item.price.toFixed(2)}</td>
+                                <td className="p-4">${item.sellingPrice?.toFixed(2)}</td>
                                 <td className="p-4">{item.unit || 'N/A'}</td>
+                                <td className="p-4 font-bold">{item.availableQuantity}</td>
                                 <td className="p-4">
                                     <button 
                                         onClick={() => onDuplicateProduct(item)}

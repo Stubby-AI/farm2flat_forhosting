@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useCart } from '../hooks/useCart';
-import { mockProducts, mockSubscriptionBoxes, mockUser, mockOrders } from '../mock/data';
+import { mockProducts, mockSubscriptionBoxes, mockUser, mockOrders, mockSourcedProducts } from '../mock/data';
 import { Product, SubscriptionBox, SubscriptionFrequency, User, CartItem, Order } from '../types';
 import { getPersonalizedSuggestions } from '../services/geminiService';
 import { ShoppingCartIcon, LeafIcon, UserIcon, TrashIcon, PlusIcon, MinusIcon, ArrowRightIcon, MapPinIcon, HeartIcon, CogIcon } from './Icons';
@@ -669,6 +669,23 @@ const UserView: React.FC = () => {
     
     const deadlineDate = calculateDeadlineDate(selectedDeadline);
 
+    const retailProducts: Product[] = useMemo(() => mockSourcedProducts
+        .filter(p => 
+            p.publishStatus === 'published' && 
+            p.publishTarget?.includes('retail') && 
+            (p.availableQuantity ?? 0) > 0
+        )
+        .map(p => ({
+            id: p.id,
+            name: p.name,
+            price: p.sellingPrice || 0,
+            unit: p.unit,
+            imageUrl: p.imageUrl,
+            farmer: p.supplierName,
+            category: p.category,
+            quantity: p.availableQuantity,
+        })), []);
+
     const handleGetSuggestions = useCallback(async () => {
         setIsLoadingSuggestions(true);
         const productsInHistory = (currentUser || mockUser).orderHistory
@@ -752,7 +769,7 @@ const UserView: React.FC = () => {
                         <PersonalizedSuggestions user={currentUser || mockUser} onGetSuggestions={handleGetSuggestions} suggestions={suggestions} isLoading={isLoadingSuggestions} />
                         <h2 className="text-3xl font-bold text-gray-800 mb-6">Fresh from the Farm</h2>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                            {mockProducts.map(p => (
+                            {retailProducts.map(p => (
                                 <ProductCard 
                                     key={p.id} 
                                     product={p} 

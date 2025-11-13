@@ -1,4 +1,4 @@
-import { Product, SubscriptionBox, SubscriptionSize, Order, User, Farmer, Hub, CartItem, PortalUser, StaffMember, Supplier, Customer, PurchaseOrder, Business, Driver, Vehicle, Route, SeasonalTrend, Campaign, Ticket, SourcedProduct } from '../types';
+import { Product, SubscriptionBox, SubscriptionSize, Order, User, Farmer, Hub, CartItem, PortalUser, StaffMember, Supplier, Customer, PurchaseOrder, Business, Driver, Vehicle, Route, SeasonalTrend, Campaign, Ticket, SourcedProduct, Payment, Invoice } from '../types';
 
 export const mockProducts: Product[] = [
   { id: 'p1', name: 'Organic Carrots', price: 2.50, unit: 'bunch', imageUrl: 'https://picsum.photos/id/1080/400/300', farmer: 'Green Acres Farm' },
@@ -9,6 +9,8 @@ export const mockProducts: Product[] = [
   { id: 'p6', name: 'Cucumbers', price: 1.00, unit: 'each', imageUrl: 'https://picsum.photos/id/202/400/300', farmer: 'Riverbend Gardens' },
   { id: 'p7', name: 'Potatoes', price: 2.75, unit: '5lb bag', imageUrl: 'https://picsum.photos/id/1043/400/300', farmer: 'Green Acres Farm' },
   { id: 'p8', name: 'Onions', price: 1.25, unit: 'lb', imageUrl: 'https://picsum.photos/id/1079/400/300', farmer: 'Riverbend Gardens' },
+  { id: 'p9', name: 'Sweet Potatoes', price: 3.20, unit: 'lb', imageUrl: 'https://picsum.photos/id/1044/400/300', farmer: 'Green Acres Farm' },
+  { id: 'p10', name: 'Broccoli', price: 2.80, unit: 'head', imageUrl: 'https://picsum.photos/id/1045/400/300', farmer: 'Riverbend Gardens' }
 ];
 
 export const mockSubscriptionBoxes: SubscriptionBox[] = [
@@ -21,6 +23,7 @@ export const mockSubscriptionBoxes: SubscriptionBox[] = [
         description: 'A weekly selection of essential vegetables for one person.',
         contentsSample: ['Carrots', 'Potatoes', 'Onions', 'Broccoli', 'Lettuce'],
         imageUrl: 'https://picsum.photos/id/102/400/300',
+        currentContents: ['p1', 'p7', 'p8', 'p10'],
     },
     {
         id: 'sb2',
@@ -31,6 +34,7 @@ export const mockSubscriptionBoxes: SubscriptionBox[] = [
         description: 'Perfect for couples or small families, a variety of fresh veggies.',
         contentsSample: ['Carrots', 'Potatoes', 'Onions', 'Broccoli', 'Lettuce', 'Tomatoes', 'Peppers'],
         imageUrl: 'https://picsum.photos/id/103/400/300',
+        currentContents: ['p1', 'p7', 'p8', 'p10', 'p2', 'p3'],
     },
     {
         id: 'sb3',
@@ -41,6 +45,7 @@ export const mockSubscriptionBoxes: SubscriptionBox[] = [
         description: 'A delicious assortment of seasonal fruits for 2-3 people.',
         contentsSample: ['Apples', 'Bananas', 'Oranges', 'Berries', 'Grapes'],
         imageUrl: 'https://picsum.photos/id/104/400/300',
+        currentContents: ['p5'],
     },
     {
         id: 'sb4',
@@ -51,10 +56,21 @@ export const mockSubscriptionBoxes: SubscriptionBox[] = [
         description: 'A mix of fruits and veggies common in Asian cuisine.',
         contentsSample: ['Bok Choy', 'Daikon Radish', 'Ginger', 'Napa Cabbage', 'Apples', 'Pears'],
         imageUrl: 'https://picsum.photos/id/105/400/300',
+        currentContents: ['p1', 'p5'],
     },
 ];
 
-const MOCK_ORDER_ITEMS: CartItem[] = mockProducts.slice(0, 3).map((p, i) => ({ ...p, quantity: i + 1, type: 'product', cartId: `mock-cart-${p.id}-${i}` }));
+// FIX: Explicitly type the return of the map to CartItem to prevent type widening on the 'type' property.
+const MOCK_ORDER_ITEMS: CartItem[] = mockProducts.slice(0, 3).map((p, i): CartItem => ({
+    cartId: `mock-cart-${p.id}-${i}`,
+    id: p.id,
+    name: p.name,
+    price: p.price,
+    imageUrl: p.imageUrl,
+    quantity: i + 1,
+    type: 'product',
+    unit: p.unit,
+}));
 
 export const mockOrders: Order[] = [
   { 
@@ -64,6 +80,8 @@ export const mockOrders: Order[] = [
     items: MOCK_ORDER_ITEMS, 
     total: MOCK_ORDER_ITEMS.reduce((sum, item) => sum + item.price * item.quantity, 0), 
     status: 'Delivered',
+    orderType: 'one_time',
+    paymentStatus: 'paid',
     deliveryDetails: {
         estimatedArrival: 'October 27, 2023',
         trackingStatus: 'Delivered'
@@ -73,9 +91,21 @@ export const mockOrders: Order[] = [
     id: 'o2', 
     userId: 'b1', // This order is from a business customer
     date: '2023-10-29', 
-    items: mockProducts.slice(2, 4).map((p,i) => ({ ...p, quantity: 1, type: 'product', cartId: `mock-cart-${p.id}-${i+3}` })), 
+    // FIX: Explicitly type the return of the map to CartItem to prevent type widening on the 'type' property.
+    items: mockProducts.slice(2, 4).map((p,i): CartItem => ({
+        cartId: `mock-cart-${p.id}-${i+3}`,
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        imageUrl: p.imageUrl,
+        quantity: 1,
+        type: 'product',
+        unit: p.unit,
+    })), 
     total: 4.50, 
     status: 'Processing',
+    orderType: 'one_time',
+    paymentStatus: 'paid',
     deliveryDetails: {
         estimatedArrival: 'November 3, 2023',
         trackingStatus: 'Out for Delivery'
@@ -85,14 +115,53 @@ export const mockOrders: Order[] = [
     id: 'o3', 
     userId: 'u1', 
     date: '2023-11-02', 
-    items: mockProducts.slice(4, 7).map((p,i) => ({ ...p, quantity: 2, type: 'product', cartId: `mock-cart-${p.id}-${i+5}` })), 
-    total: 12.50, 
+    items: [
+        // FIX: Explicitly type the return of the map to CartItem to prevent type widening on the 'type' property.
+        ...mockProducts.slice(4, 7).map((p,i): CartItem => ({
+            cartId: `mock-cart-${p.id}-${i+5}`,
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            imageUrl: p.imageUrl,
+            quantity: 2,
+            type: 'product',
+            unit: p.unit,
+        })),
+        { cartId: 'mock-cart-sb1', id: 'sb1', name: 'Veggie Box (Small)', price: 25.00, imageUrl: '', quantity: 1, type: 'subscription' }
+    ], 
+    total: 37.50, 
     status: 'Pending',
+    orderType: 'subscription',
+    paymentStatus: 'pending',
     deliveryDetails: {
         estimatedArrival: 'November 8, 2023',
         trackingStatus: 'Order Confirmed'
     } 
   },
+  {
+    id: 'o4',
+    userId: 'u1',
+    date: '2023-11-05',
+    // FIX: Explicitly type the return of the map to CartItem to prevent type widening on the 'type' property.
+    items: mockProducts.slice(1, 3).map((p, i): CartItem => ({
+        cartId: `mock-cart-${p.id}-${i+10}`,
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        imageUrl: p.imageUrl,
+        quantity: 1,
+        type: 'product',
+        unit: p.unit,
+    })),
+    total: 5.50,
+    status: 'Packed',
+    orderType: 'one_time',
+    paymentStatus: 'paid',
+    deliveryDetails: {
+        estimatedArrival: 'November 9, 2023',
+        trackingStatus: 'Preparing'
+    }
+  }
 ];
 
 export const mockUser: User = {
@@ -106,6 +175,7 @@ export const mockUser: User = {
     regularPurchaseList: ['p1', 'p4'],
     groceryBudget: { amount: 100, period: 'Weekly' },
     loyaltyCredits: 75.50,
+    lifetimeValue: 450.75,
 };
 
 export const mockPortalUsers: PortalUser[] = [
@@ -323,14 +393,29 @@ export const mockTickets: Ticket[] = [
 ];
 
 export const mockSourcedProducts: SourcedProduct[] = [
-    { id: 'sp1', name: 'Organic Carrots', supplierId: 'f1', supplierName: 'Green Acres Farm', costPrice: 1.80, unit: 'bunch', imageUrl: 'https://picsum.photos/id/1080/400/300', category: 'Vegetable', isPublished: true, sellingPrice: 2.50 },
-    { id: 'sp2', name: 'Heirloom Tomatoes', supplierId: 'f2', supplierName: 'Sunnyvale Orchards', costPrice: 2.90, unit: 'lb', imageUrl: 'https://picsum.photos/id/1078/400/300', category: 'Vegetable', isPublished: true, sellingPrice: 4.00 },
-    { id: 'sp3', name: 'Red Bell Peppers', supplierId: 'f1', supplierName: 'Green Acres Farm', costPrice: 1.05, unit: 'each', imageUrl: 'https://picsum.photos/id/1025/400/300', category: 'Vegetable', isPublished: false },
-    { id: 'sp4', name: 'Spinach', supplierId: 'f3', supplierName: 'Riverbend Gardens', costPrice: 2.10, unit: 'bag', imageUrl: 'https://picsum.photos/id/292/400/300', category: 'Vegetable', isPublished: true, sellingPrice: 3.00 },
-    { id: 'sp5', name: 'Gala Apples', supplierId: 'f2', supplierName: 'Sunnyvale Orchards', costPrice: 2.50, unit: 'lb', imageUrl: 'https://picsum.photos/id/431/400/300', category: 'Fruit', isPublished: false },
-    { id: 'sp6', name: 'Cucumbers', supplierId: 'f3', supplierName: 'Riverbend Gardens', costPrice: 0.70, unit: 'each', imageUrl: 'https://picsum.photos/id/202/400/300', category: 'Vegetable', isPublished: false },
-    { id: 'sp7', name: 'Potatoes', supplierId: 'f4', supplierName: 'Prairie Harvest', costPrice: 1.95, unit: '5lb bag', imageUrl: 'https://picsum.photos/id/1043/400/300', category: 'Vegetable', isPublished: true, sellingPrice: 2.75 },
-    { id: 'sp8', name: 'Onions', supplierId: 'f3', supplierName: 'Riverbend Gardens', costPrice: 0.90, unit: 'lb', imageUrl: 'https://picsum.photos/id/1079/400/300', category: 'Vegetable', isPublished: true, sellingPrice: 1.25 },
-    { id: 'sp9', name: 'Zucchini', supplierId: 'f1', supplierName: 'Green Acres Farm', costPrice: 1.25, unit: 'each', imageUrl: 'https://picsum.photos/id/211/400/300', category: 'Vegetable', isPublished: false },
-    { id: 'sp10', name: 'Strawberries', supplierId: 'f1', supplierName: 'Green Acres Farm', costPrice: 4.00, unit: 'quart', imageUrl: 'https://picsum.photos/id/1082/400/300', category: 'Fruit', isPublished: true, sellingPrice: 5.50 },
+    { id: 'sp1', name: 'Organic Carrots', baseProductName: 'Carrots', supplierId: 'f1', supplierName: 'Green Acres Farm', costPrice: 1.80, unit: 'bunch', imageUrl: 'https://picsum.photos/id/1080/400/300', category: 'Vegetable', publishStatus: 'published', sellingPrice: 2.50, publishTarget: ['retail', 'wholesale'], availableQuantity: 55 },
+    { id: 'sp1_alt', name: 'Carrots', baseProductName: 'Carrots', supplierId: 'f4', supplierName: 'Prairie Harvest', costPrice: 1.65, unit: 'bunch', imageUrl: 'https://picsum.photos/id/1080/400/300', category: 'Vegetable', publishStatus: 'unpublished', availableQuantity: 120 },
+    { id: 'sp2', name: 'Heirloom Tomatoes', baseProductName: 'Tomatoes', supplierId: 'f2', supplierName: 'Sunnyvale Orchards', costPrice: 2.90, unit: 'lb', imageUrl: 'https://picsum.photos/id/1078/400/300', category: 'Vegetable', publishStatus: 'published', sellingPrice: 4.00, publishTarget: ['retail'], availableQuantity: 8 },
+    { id: 'sp2_alt', name: 'Roma Tomatoes', baseProductName: 'Tomatoes', supplierId: 'f1', supplierName: 'Green Acres Farm', costPrice: 2.75, unit: 'lb', imageUrl: 'https://picsum.photos/id/1078/400/300', category: 'Vegetable', publishStatus: 'unpublished', availableQuantity: 60 },
+    { id: 'sp3', name: 'Red Bell Peppers', baseProductName: 'Peppers', supplierId: 'f1', supplierName: 'Green Acres Farm', costPrice: 1.05, unit: 'each', imageUrl: 'https://picsum.photos/id/1025/400/300', category: 'Vegetable', publishStatus: 'unpublished', availableQuantity: 150 },
+    { id: 'sp4', name: 'Spinach', baseProductName: 'Spinach', supplierId: 'f3', supplierName: 'Riverbend Gardens', costPrice: 2.10, unit: 'bag', imageUrl: 'https://picsum.photos/id/292/400/300', category: 'Vegetable', publishStatus: 'published', sellingPrice: 3.00, publishTarget: ['retail'], availableQuantity: 40 },
+    { id: 'sp5', name: 'Gala Apples', baseProductName: 'Apples', supplierId: 'f2', supplierName: 'Sunnyvale Orchards', costPrice: 2.50, unit: 'lb', imageUrl: 'https://picsum.photos/id/431/400/300', category: 'Fruit', publishStatus: 'unpublished', availableQuantity: 200 },
+    { id: 'sp6', name: 'Cucumbers', baseProductName: 'Cucumbers', supplierId: 'f3', supplierName: 'Riverbend Gardens', costPrice: 0.70, unit: 'each', imageUrl: 'https://picsum.photos/id/202/400/300', category: 'Vegetable', publishStatus: 'unpublished', availableQuantity: 100 },
+    { id: 'sp7', name: 'Potatoes (5lb)', baseProductName: 'Potatoes', supplierId: 'f4', supplierName: 'Prairie Harvest', costPrice: 1.95, unit: '5lb bag', imageUrl: 'https://picsum.photos/id/1043/400/300', category: 'Vegetable', publishStatus: 'published', sellingPrice: 2.75, publishTarget: ['wholesale'], availableQuantity: 9 },
+    { id: 'sp7_alt', name: 'Russet Potatoes', baseProductName: 'Potatoes', supplierId: 'f1', supplierName: 'Green Acres Farm', costPrice: 2.15, unit: '5lb bag', imageUrl: 'https://picsum.photos/id/1043/400/300', category: 'Vegetable', publishStatus: 'unpublished', availableQuantity: 80 },
+    { id: 'sp8', name: 'Onions', baseProductName: 'Onions', supplierId: 'f3', supplierName: 'Riverbend Gardens', costPrice: 0.90, unit: 'lb', imageUrl: 'https://picsum.photos/id/1079/400/300', category: 'Vegetable', publishStatus: 'published', sellingPrice: 1.25, publishTarget: ['retail', 'wholesale'], availableQuantity: 110 },
+    { id: 'sp9', name: 'Zucchini', baseProductName: 'Zucchini', supplierId: 'f1', supplierName: 'Green Acres Farm', costPrice: 1.25, unit: 'each', imageUrl: 'https://picsum.photos/id/211/400/300', category: 'Vegetable', publishStatus: 'unpublished', availableQuantity: 70 },
+    { id: 'sp10', name: 'Strawberries', baseProductName: 'Strawberries', supplierId: 'f1', supplierName: 'Green Acres Farm', costPrice: 4.00, unit: 'quart', imageUrl: 'https://picsum.photos/id/1082/400/300', category: 'Fruit', publishStatus: 'published', sellingPrice: 5.50, publishTarget: ['retail'], availableQuantity: 0 },
+];
+
+export const mockPayments: Payment[] = [
+    { id: 'pay_1', orderId: 'o1', userId: 'u1', userName: 'Jane Doe', amount: 30.50, date: '2023-10-26', status: 'Completed', method: 'Credit Card' },
+    { id: 'pay_2', orderId: 'o2', userId: 'b1', userName: 'The Grand Restaurant', amount: 4.50, date: '2023-10-29', status: 'Completed', method: 'Credit Card' },
+    { id: 'pay_3', orderId: 'o3', userId: 'u1', userName: 'Jane Doe', amount: 12.50, date: '2023-11-02', status: 'Pending', method: 'PayPal' },
+];
+
+export const mockInvoices: Invoice[] = [
+    { id: 'inv_f1_1', entityId: 'f1', entityName: 'Green Acres Farm', entityType: 'Supplier', date: '2023-10-01', dueDate: '2023-10-31', amount: 1250.00, status: 'Paid' },
+    { id: 'inv_b1_1', entityId: 'b1', entityName: 'The Grand Restaurant', entityType: 'Customer', date: '2023-10-15', dueDate: '2023-11-15', amount: 890.00, status: 'Pending' },
+    { id: 'inv_f2_1', entityId: 'f2', entityName: 'Sunnyvale Orchards', entityType: 'Supplier', date: '2023-09-20', dueDate: '2023-10-20', amount: 980.50, status: 'Overdue' },
 ];
