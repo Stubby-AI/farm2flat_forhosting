@@ -1,4 +1,4 @@
-import { Product, SubscriptionBox, SubscriptionSize, Order, User, Farmer, Hub, CartItem, PortalUser } from '../types';
+import { Product, SubscriptionBox, SubscriptionSize, Order, User, Farmer, Hub, CartItem, PortalUser, StaffMember, Supplier, Customer, PurchaseOrder, Business } from '../types';
 
 export const mockProducts: Product[] = [
   { id: 'p1', name: 'Organic Carrots', price: 2.50, unit: 'bunch', imageUrl: 'https://picsum.photos/id/1080/400/300', farmer: 'Green Acres Farm' },
@@ -54,7 +54,6 @@ export const mockSubscriptionBoxes: SubscriptionBox[] = [
     },
 ];
 
-// FIX: Added cartId to mock order items to match the CartItem type.
 const MOCK_ORDER_ITEMS: CartItem[] = mockProducts.slice(0, 3).map((p, i) => ({ ...p, quantity: i + 1, type: 'product', cartId: `mock-cart-${p.id}-${i}` }));
 
 export const mockOrders: Order[] = [
@@ -72,7 +71,7 @@ export const mockOrders: Order[] = [
   },
   { 
     id: 'o2', 
-    userId: 'u1', 
+    userId: 'b1', // This order is from a business customer
     date: '2023-10-29', 
     items: mockProducts.slice(2, 4).map((p,i) => ({ ...p, quantity: 1, type: 'product', cartId: `mock-cart-${p.id}-${i+3}` })), 
     total: 4.50, 
@@ -134,12 +133,87 @@ export const mockPortalUsers: PortalUser[] = [
 ];
 
 
+// --- New Mock Data for Portals ---
+
+export const mockStaff: StaffMember[] = [
+    { id: 's1', name: 'Maria Garcia', role: 'Farm Hand', contact: '555-1234' },
+    { id: 's2', name: 'Tom Chen', role: 'Logistics Manager', contact: '555-5678' },
+];
+
+export const mockFarmerSuppliers: Supplier[] = [
+    { id: 'sup1', name: 'Guelph Seed Co.', category: 'Seeds', contactEmail: 'sales@guelphseed.com' },
+    { id: 'sup2', name: 'AgriPak Solutions', category: 'Packaging', contactEmail: 'contact@agripak.com' },
+];
+
+export const mockFarmerCustomers: Customer[] = [
+    { id: 'cust1', name: 'The Corner Cafe', type: 'Restaurant', contactEmail: 'orders@cornercafe.com' },
+    { id: 'cust2', name: 'Local Roots Grocer', type: 'Grocer', contactEmail: 'buyer@localroots.com' },
+];
+
+export const mockFarmerPurchases: PurchaseOrder[] = [
+    { id: 'po1', supplierId: 'sup1', date: '2024-03-15', items: [{ name: 'Carrot Seeds', quantity: 50, unit: 'packet' }], total: 125.00, status: 'Received' },
+    { id: 'po2', supplierId: 'sup2', date: '2024-05-10', items: [{ name: 'Cardboard Boxes', quantity: 200, unit: 'box' }], total: 350.00, status: 'Pending' },
+];
+
+
 export const mockFarmers: Farmer[] = [
-    { id: 'f1', name: 'Green Acres Farm', location: 'Guelph, ON', specialty: ['Vegetables', 'Root Crops'] },
-    { id: 'f2', name: 'Sunnyvale Orchards', location: 'Niagara, ON', specialty: ['Fruits', 'Apples', 'Tomatoes'] },
-    { id: 'f3', name: 'Riverbend Gardens', location: 'Ottawa, ON', specialty: ['Leafy Greens', 'Herbs'] },
+    { 
+        id: 'f1', 
+        name: 'Green Acres Farm', 
+        location: 'Guelph, ON', 
+        specialty: ['Vegetables', 'Root Crops'],
+        geolocation: { lat: 43.5448, lng: -80.2482 },
+        certifications: ['Certified Organic', 'Local Food Plus'],
+        description: 'A family-owned farm specializing in root vegetables and sustainable farming practices.',
+        farmImageUrl: 'https://picsum.photos/id/1015/600/400',
+        operatingHours: 'Mon-Sat: 9am - 5pm',
+        publicProfileBlurb: 'Fresh, organic vegetables straight from our family to yours.',
+        productIds: ['p1', 'p3', 'p7'],
+        staff: mockStaff,
+        suppliers: mockFarmerSuppliers,
+        customers: mockFarmerCustomers,
+        purchaseHistory: mockFarmerPurchases,
+    },
+    { id: 'f2', name: 'Sunnyvale Orchards', location: 'Niagara, ON', specialty: ['Fruits', 'Apples', 'Tomatoes'], productIds: ['p2', 'p5'] },
+    { id: 'f3', name: 'Riverbend Gardens', location: 'Ottawa, ON', specialty: ['Leafy Greens', 'Herbs'], productIds: ['p4', 'p6', 'p8'] },
     { id: 'f4', name: 'Prairie Harvest', location: 'Brant, ON', specialty: ['Grains', 'Potatoes'] },
 ];
+
+export const mockBusinessProducts: Product[] = [
+    { id: 'bp1', name: 'Garden Salad', price: 12.50, unit: 'plate', imageUrl: 'https://picsum.photos/id/203/400/300', farmer: 'The Grand Restaurant' },
+    { id: 'bp2', name: 'Tomato Soup', price: 8.00, unit: 'bowl', imageUrl: 'https://picsum.photos/id/204/400/300', farmer: 'The Grand Restaurant' },
+];
+
+export const mockBusinesses: Business[] = [
+    {
+        id: 'b1',
+        name: 'The Grand Restaurant',
+        type: 'Restaurant',
+        location: 'Toronto, ON',
+        contactEmail: 'buyer@restaurant.com',
+        staff: [{ id: 'bs1', name: 'Chef Antoine', role: 'Head Chef', contact: 'chef@restaurant.com' }],
+        suppliers: [{id: 'fhub', name: 'FrescoHub', category: 'Fresh Produce', contactEmail: 'sales@frescohub.com'}],
+        customers: [], // B2C customers not tracked here
+        purchaseHistory: mockOrders.filter(o => o.userId === 'b1'),
+        products: mockBusinessProducts,
+    }
+]
+
+
+export const mockFarmerProducts: Product[] = [
+    { ...mockProducts[0], category: 'Vegetable', subcategory: 'Root', availableDate: '2024-05-20', status: 'Available', quantity: 150, farmer: 'Green Acres Farm' }, // Carrots
+    { ...mockProducts[2], category: 'Vegetable', subcategory: 'Fruit Vegetable', availableDate: '2024-05-22', status: 'Available', quantity: 80, farmer: 'Green Acres Farm' }, // Peppers
+    { ...mockProducts[6], category: 'Vegetable', subcategory: 'Tuber', availableDate: '2024-05-25', status: 'Unavailable', quantity: 0, farmer: 'Green Acres Farm' }, // Potatoes
+    { ...mockProducts[3], category: 'Vegetable', subcategory: 'Leafy Green', availableDate: '2024-05-20', status: 'Available', quantity: 120, farmer: 'Riverbend Gardens' }, // Spinach
+    { ...mockProducts[4], category: 'Fruit', subcategory: 'Pome', availableDate: '2024-06-01', status: 'Available', quantity: 200, farmer: 'Sunnyvale Orchards' }, // Apples
+];
+
+export const mockImportedFarmerProducts: Product[] = [
+    { id: 'imp1', name: 'Zucchini', price: 1.75, unit: 'each', imageUrl: 'https://picsum.photos/id/211/400/300', farmer: 'Green Acres Farm', category: 'Vegetable', subcategory: 'Fruit Vegetable', availableDate: '2024-06-10', status: 'Available', quantity: 90 },
+    { id: 'imp2', name: 'Strawberries', price: 5.50, unit: 'quart', imageUrl: 'https://picsum.photos/id/1082/400/300', farmer: 'Green Acres Farm', category: 'Fruit', subcategory: 'Berry', availableDate: '2024-06-15', status: 'Available', quantity: 60 },
+    { id: 'imp3', name: 'Asparagus', price: 4.25, unit: 'bunch', imageUrl: 'https://picsum.photos/id/495/400/300', farmer: 'Green Acres Farm', category: 'Vegetable', subcategory: 'Stem', availableDate: '2024-06-05', status: 'Unavailable', quantity: 0 },
+];
+
 
 export const mockHubs: Hub[] = [
     { id: 'h1', postalCodePrefix: 'M', location: 'Toronto Downtown Core' },
