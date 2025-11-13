@@ -1,15 +1,15 @@
 import React, { useState, useMemo } from 'react';
-import { Business, Product, StaffMember, Supplier, Customer, Order } from '../types';
+import { Business, Product, StaffMember, Supplier, Customer, Order, CartItem } from '../types';
 import { mockBusinessProducts } from '../mock/data';
 import { 
     LogoutIcon, UsersIcon, ChartBarIcon, BoxIcon, ClipboardListIcon, 
     CurrencyDollarIcon, UsersGroupIcon, BuildingStorefrontIcon, ReceiptPercentIcon,
-    UploadIcon, FileDownloadIcon, PrinterIcon
+    UploadIcon, FileDownloadIcon, PrinterIcon, HomeModernIcon, ClipboardDocumentDuplicateIcon
 } from './Icons';
 
 type BusinessViewType = 
     'DASHBOARD' | 'PRODUCTS' | 'SUPPLIERS' | 'CUSTOMERS' | 
-    'ORDERS' | 'PURCHASES' | 'FINANCIALS' | 'STAFF';
+    'ORDERS' | 'PURCHASES' | 'FINANCIALS' | 'STAFF' | 'FARM2FLAT';
 
 interface BusinessViewProps {
   business: Business;
@@ -18,13 +18,29 @@ interface BusinessViewProps {
 
 const BusinessView: React.FC<BusinessViewProps> = ({ business, onLogout }) => {
   const [currentView, setCurrentView] = useState<BusinessViewType>('DASHBOARD');
+  const [products, setProducts] = useState<Product[]>(business.products || mockBusinessProducts);
+
+  const addProductToMenu = (product: Product | CartItem) => {
+    const newProduct: Product = {
+        id: `dup-${product.id}-${Date.now()}`,
+        name: product.name,
+        price: product.price,
+        unit: 'unit' in product ? product.unit : '',
+        imageUrl: product.imageUrl,
+        farmer: business.name,
+        moq: 1,
+        isSeasonal: false,
+    };
+    setProducts(prev => [...prev, newProduct]);
+    alert(`"${newProduct.name}" has been duplicated to your product list!`);
+  };
 
   const renderView = () => {
     switch (currentView) {
         case 'DASHBOARD':
             return <DashboardView business={business} />;
         case 'PRODUCTS':
-            return <ProductManagementView initialProducts={business.products || []} />;
+            return <ProductManagementView products={products} setProducts={setProducts} />;
         case 'SUPPLIERS':
             return <SupplierManagementView suppliers={business.suppliers || []} />;
         case 'CUSTOMERS':
@@ -33,6 +49,8 @@ const BusinessView: React.FC<BusinessViewProps> = ({ business, onLogout }) => {
             return <OrderManagementView />;
         case 'PURCHASES':
             return <PurchaseManagementView purchases={business.purchaseHistory || []} />;
+        case 'FARM2FLAT':
+            return <Farm2FlatView purchaseHistory={business.purchaseHistory || []} onDuplicateProduct={addProductToMenu} />;
         case 'FINANCIALS':
             return <FinancialsView />;
         case 'STAFF':
@@ -52,9 +70,10 @@ const BusinessView: React.FC<BusinessViewProps> = ({ business, onLogout }) => {
         <nav className="flex-grow">
           <ul className="space-y-2">
             <NavItem icon={<ChartBarIcon className="w-5 h-5" />} label="Dashboard" active={currentView === 'DASHBOARD'} onClick={() => setCurrentView('DASHBOARD')} />
-            <NavItem icon={<BoxIcon className="w-5 h-5" />} label="Products" active={currentView === 'PRODUCTS'} onClick={() => setCurrentView('PRODUCTS')} />
-            <NavItem icon={<ClipboardListIcon className="w-5 h-5" />} label="Orders" active={currentView === 'ORDERS'} onClick={() => setCurrentView('ORDERS')} />
+            <NavItem icon={<BoxIcon className="w-5 h-5" />} label="My Products / Menu" active={currentView === 'PRODUCTS'} onClick={() => setCurrentView('PRODUCTS')} />
+            <NavItem icon={<ClipboardListIcon className="w-5 h-5" />} label="Customer Orders" active={currentView === 'ORDERS'} onClick={() => setCurrentView('ORDERS')} />
             <NavItem icon={<ReceiptPercentIcon className="w-5 h-5" />} label="My Purchases" active={currentView === 'PURCHASES'} onClick={() => setCurrentView('PURCHASES')} />
+            <NavItem icon={<HomeModernIcon className="w-5 h-5" />} label="Farm2Flat" active={currentView === 'FARM2FLAT'} onClick={() => setCurrentView('FARM2FLAT')} />
             <NavItem icon={<CurrencyDollarIcon className="w-5 h-5" />} label="Financials" active={currentView === 'FINANCIALS'} onClick={() => setCurrentView('FINANCIALS')} />
             <hr className="border-blue-700 my-2" />
             <NavItem icon={<UsersGroupIcon className="w-5 h-5" />} label="Staff" active={currentView === 'STAFF'} onClick={() => setCurrentView('STAFF')} />
@@ -103,8 +122,7 @@ const DashboardView: React.FC<{ business: Business }> = ({ business }) => (
     </div>
 );
 
-const ProductManagementView: React.FC<{ initialProducts: Product[] }> = ({ initialProducts }) => {
-    const [products, setProducts] = useState<Product[]>(initialProducts);
+const ProductManagementView: React.FC<{ products: Product[], setProducts: React.Dispatch<React.SetStateAction<Product[]>> }> = ({ products, setProducts }) => {
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [filters, setFilters] = useState({ name: '', status: 'all' });
 
@@ -222,6 +240,56 @@ const PurchaseManagementView: React.FC<{ purchases: Order[] }> = ({ purchases })
     </div>
 );
 
+const Farm2FlatView: React.FC<{ purchaseHistory: Order[]; onDuplicateProduct: (product: CartItem) => void; }> = ({ purchaseHistory, onDuplicateProduct }) => {
+    const purchasedItems = useMemo(() => {
+        const allItems = purchaseHistory.flatMap(o => o.items);
+        const uniqueItems = new Map<string, CartItem>();
+        allItems.forEach(item => {
+            if (!uniqueItems.has(item.id)) {
+                uniqueItems.set(item.id, item);
+            }
+        });
+        return Array.from(uniqueItems.values());
+    }, [purchaseHistory]);
+
+    return (
+        <div>
+             <h1 className="text-3xl font-bold mb-2 text-gray-800">Farm2Flat Supplier Hub</h1>
+             <p className="text-gray-600 mb-6">These are products you've sourced from FrescoHub. You can easily duplicate them to your own menu.</p>
+             <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
+                <table className="w-full text-left">
+                    <thead>
+                        <tr className="border-b">
+                            <th className="p-4">Product Name</th>
+                            <th className="p-4">Price</th>
+                            <th className="p-4">Unit</th>
+                            <th className="p-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {purchasedItems.map(item => (
+                            <tr key={item.id} className="border-b hover:bg-gray-50">
+                                <td className="p-4 font-semibold">{item.name}</td>
+                                <td className="p-4">${item.price.toFixed(2)}</td>
+                                <td className="p-4">{item.unit || 'N/A'}</td>
+                                <td className="p-4">
+                                    <button 
+                                        onClick={() => onDuplicateProduct(item)}
+                                        className="bg-blue-100 text-blue-700 px-3 py-1 rounded-md font-semibold hover:bg-blue-200 text-sm flex items-center gap-2"
+                                    >
+                                        <ClipboardDocumentDuplicateIcon className="w-4 h-4" />
+                                        Duplicate to Menu
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+             </div>
+        </div>
+    );
+};
+
 const StaffManagementView: React.FC<{ staff: StaffMember[] }> = ({ staff }) => (
     <div>
         <h1 className="text-3xl font-bold mb-6 text-gray-800">Staff Management</h1>
@@ -250,14 +318,64 @@ const SupplierManagementView: React.FC<{ suppliers: Supplier[] }> = ({ suppliers
     </div>
 );
 
-const CustomerManagementView: React.FC<{ customers: Customer[] }> = ({ customers }) => (
-     <div>
-        <h1 className="text-3xl font-bold mb-6 text-gray-800">Customer Management</h1>
-         <div className="bg-white p-12 rounded-lg shadow-md text-center">
-            <p className="text-gray-600 text-lg">CRM features for managing your own customers are coming soon.</p>
+const CustomerManagementView: React.FC<{ customers: Customer[] }> = ({ customers }) => {
+    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+
+    if (selectedCustomer) {
+        return (
+            <div>
+                <button onClick={() => setSelectedCustomer(null)} className="mb-4 text-blue-600 hover:underline font-semibold">
+                    &larr; Back to all customers
+                </button>
+                <h1 className="text-3xl font-bold mb-2 text-gray-800">{selectedCustomer.name}</h1>
+                <p className="text-gray-500 mb-6">{selectedCustomer.contactEmail}</p>
+
+                <h2 className="text-2xl font-semibold mb-4 text-gray-700">Order History</h2>
+                <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
+                    {selectedCustomer.orderHistory && selectedCustomer.orderHistory.length > 0 ? (
+                         <table className="w-full text-left">
+                            <thead>
+                                <tr className="border-b"><th className="p-4">Order ID</th><th className="p-4">Date</th><th className="p-4">Total</th><th className="p-4">Status</th></tr>
+                            </thead>
+                            <tbody>
+                                {selectedCustomer.orderHistory.map(o => (
+                                    <tr key={o.id} className="border-b hover:bg-gray-50">
+                                        <td className="p-4">{o.id}</td>
+                                        <td className="p-4">{o.date}</td>
+                                        <td className="p-4">${o.total.toFixed(2)}</td>
+                                        <td className="p-4">{o.status}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    ) : <p>No order history found for this customer.</p>}
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div>
+            <h1 className="text-3xl font-bold mb-6 text-gray-800">Customer Management</h1>
+            <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
+                <table className="w-full text-left">
+                     <thead>
+                        <tr className="border-b"><th className="p-4">Name</th><th className="p-4">Type</th><th className="p-4">Contact Email</th></tr>
+                    </thead>
+                    <tbody>
+                        {customers.map(c => (
+                            <tr key={c.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedCustomer(c)}>
+                                <td className="p-4 font-semibold text-blue-700">{c.name}</td>
+                                <td className="p-4">{c.type}</td>
+                                <td className="p-4">{c.contactEmail}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 const OrderManagementView: React.FC = () => (
      <div>

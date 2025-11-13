@@ -1,37 +1,57 @@
 import React, { useState } from 'react';
-import { mockPortalUsers, mockUser, mockHubs, mockDrivers, mockVehicles, mockRoutes, mockSeasonalTrends, mockCampaigns, mockTickets } from '../mock/data';
-import { User, PortalUser, Hub, Driver, Vehicle, Route, SeasonalTrend, Campaign, Ticket } from '../types';
+import { mockPortalUsers, mockUser, mockDrivers, mockVehicles, mockRoutes, mockSeasonalTrends, mockCampaigns, mockTickets, mockFarmers, mockSourcedProducts } from '../mock/data';
+import { Farmer, SourcedProduct } from '../types';
 import { 
     UsersGroupIcon, TruckIcon, CalendarDaysIcon, ChartBarIcon, MegaphoneIcon, 
-    ExclamationTriangleIcon, LogoutIcon, SparklesIcon 
+    ExclamationTriangleIcon, LogoutIcon, SparklesIcon, BuildingOffice2Icon,
+    CubeTransparentIcon, CheckBadgeIcon
 } from './Icons';
 
 type AdminViewType = 
-    'USERS' | 'LOGISTICS' | 'SEASONALITY' | 'ANALYTICS' | 'MARKETING' | 'DISPUTES';
+    'USERS' | 'SUPPLIERS' | 'PRODUCT_CURATION' | 'PUBLISHED_PRODUCTS' |
+    'LOGISTICS' | 'SEASONALITY' | 'ANALYTICS' | 'MARKETING' | 'DISPUTES';
 
 interface AdminViewProps {
   onLogout: () => void;
 }
 
 const AdminView: React.FC<AdminViewProps> = ({ onLogout }) => {
-  const [currentView, setCurrentView] = useState<AdminViewType>('USERS');
+  const [currentView, setCurrentView] = useState<AdminViewType>('SUPPLIERS');
+  const [sourcedProducts, setSourcedProducts] = useState<SourcedProduct[]>(mockSourcedProducts);
+
+  const handlePublishProduct = (productId: string) => {
+    const product = sourcedProducts.find(p => p.id === productId);
+    if (!product) return;
+
+    const suggestedPrice = (product.costPrice * 1.4).toFixed(2);
+    const priceInput = prompt(`Enter selling price for ${product.name} (suggested: $${suggestedPrice}):`, suggestedPrice);
+
+    if (priceInput !== null) {
+      const sellingPrice = parseFloat(priceInput);
+      if (!isNaN(sellingPrice) && sellingPrice > 0) {
+        setSourcedProducts(prevProducts =>
+          prevProducts.map(p =>
+            p.id === productId ? { ...p, isPublished: true, sellingPrice: sellingPrice } : p
+          )
+        );
+      } else {
+        alert("Invalid price entered.");
+      }
+    }
+  };
 
   const renderView = () => {
     switch (currentView) {
-      case 'USERS':
-        return <UserManagementView />;
-      case 'LOGISTICS':
-        return <LogisticsManagementView />;
-      case 'SEASONALITY':
-        return <SeasonalityView />;
-      case 'ANALYTICS':
-        return <AnalyticsView />;
-      case 'MARKETING':
-        return <MarketingView />;
-      case 'DISPUTES':
-        return <DisputeManagementView />;
-      default:
-        return <UserManagementView />;
+      case 'USERS': return <UserManagementView />;
+      case 'SUPPLIERS': return <SupplierManagementView />;
+      case 'PRODUCT_CURATION': return <ProductCurationView products={sourcedProducts} onPublish={handlePublishProduct} />;
+      case 'PUBLISHED_PRODUCTS': return <PublishedProductsView products={sourcedProducts.filter(p => p.isPublished)} />;
+      case 'LOGISTICS': return <LogisticsManagementView />;
+      case 'SEASONALITY': return <SeasonalityView />;
+      case 'ANALYTICS': return <AnalyticsView />;
+      case 'MARKETING': return <MarketingView />;
+      case 'DISPUTES': return <DisputeManagementView />;
+      default: return <SupplierManagementView />;
     }
   };
 
@@ -40,8 +60,13 @@ const AdminView: React.FC<AdminViewProps> = ({ onLogout }) => {
       <aside className="w-64 bg-gray-800 text-white p-4 flex flex-col">
         <h2 className="text-2xl font-bold mb-8">FrescoHub Admin</h2>
         <nav className="flex-grow">
-          <ul className="space-y-2">
-            <NavItem icon={<UsersGroupIcon className="w-5 h-5"/>} label="User & Role Mgmt" active={currentView === 'USERS'} onClick={() => setCurrentView('USERS')} />
+          <ul className="space-y-1">
+            <NavItem icon={<UsersGroupIcon className="w-5 h-5"/>} label="User Management" active={currentView === 'USERS'} onClick={() => setCurrentView('USERS')} />
+            <hr className="border-gray-700 my-2" />
+            <NavItem icon={<BuildingOffice2Icon className="w-5 h-5"/>} label="Supplier Management" active={currentView === 'SUPPLIERS'} onClick={() => setCurrentView('SUPPLIERS')} />
+            <NavItem icon={<CubeTransparentIcon className="w-5 h-5"/>} label="Product Curation" active={currentView === 'PRODUCT_CURATION'} onClick={() => setCurrentView('PRODUCT_CURATION')} />
+            <NavItem icon={<CheckBadgeIcon className="w-5 h-5"/>} label="Published Products" active={currentView === 'PUBLISHED_PRODUCTS'} onClick={() => setCurrentView('PUBLISHED_PRODUCTS')} />
+            <hr className="border-gray-700 my-2" />
             <NavItem icon={<TruckIcon className="w-5 h-5"/>} label="Hub & Logistics" active={currentView === 'LOGISTICS'} onClick={() => setCurrentView('LOGISTICS')} />
             <NavItem icon={<CalendarDaysIcon className="w-5 h-5"/>} label="Seasonality Intel" active={currentView === 'SEASONALITY'} onClick={() => setCurrentView('SEASONALITY')} />
             <NavItem icon={<ChartBarIcon className="w-5 h-5"/>} label="Analytics & Reports" active={currentView === 'ANALYTICS'} onClick={() => setCurrentView('ANALYTICS')} />
@@ -60,6 +85,7 @@ const AdminView: React.FC<AdminViewProps> = ({ onLogout }) => {
   );
 };
 
+// #region Reusable Components
 const NavItem: React.FC<{icon: React.ReactNode, label: string, active: boolean, onClick: () => void}> = ({ icon, label, active, onClick }) => (
     <li>
         <button onClick={onClick} className={`w-full text-left p-2 rounded flex items-center gap-3 transition-colors text-sm ${active ? 'bg-gray-700' : 'hover:bg-gray-700'}`}>
@@ -78,7 +104,9 @@ const AiInsight: React.FC<{ title: string, content: string }> = ({ title, conten
         <p className="text-indigo-700 mt-1 text-sm">{content}</p>
     </div>
 );
+// #endregion
 
+// #region Views
 const UserManagementView: React.FC = () => {
     const allUsers = [...mockPortalUsers, { id: mockUser.id, email: mockUser.email, name: mockUser.name, role: 'user' as const }];
     return (
@@ -103,6 +131,113 @@ const UserManagementView: React.FC = () => {
         </div>
     );
 };
+
+const SupplierManagementView: React.FC = () => (
+    <div>
+        <h1 className="text-3xl font-bold mb-6 text-gray-800">Supplier / Farmer Management</h1>
+        <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
+            <table className="w-full text-left">
+                <thead>
+                    <tr className="border-b">
+                        <th className="p-4">Supplier Name</th>
+                        <th className="p-4">Location</th>
+                        <th className="p-4">Specialty</th>
+                        <th className="p-4">AI Performance Score</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {mockFarmers.map(farmer => (
+                        <tr key={farmer.id} className="border-b hover:bg-gray-50">
+                            <td className="p-4 font-semibold">{farmer.name}</td>
+                            <td className="p-4">{farmer.location}</td>
+                            <td className="p-4">{farmer.specialty.join(', ')}</td>
+                            <td className="p-4 font-bold text-center">{farmer.performanceScore || 'N/A'}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+        <AiInsight title="Supplier Reliability" content="Sunnyvale Orchards (Score: 95) consistently delivers high-quality produce on time. Prioritize procurement from them for key fruit products." />
+    </div>
+);
+
+const ProductCurationView: React.FC<{products: SourcedProduct[], onPublish: (id: string) => void}> = ({ products, onPublish }) => (
+    <div>
+        <h1 className="text-3xl font-bold mb-6 text-gray-800">Product Curation</h1>
+        <p className="text-gray-600 mb-6 -mt-4">Review products from all suppliers and publish them to the main platform.</p>
+        <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
+            <table className="w-full text-left">
+                <thead>
+                    <tr className="border-b">
+                        <th className="p-4">Product</th>
+                        <th className="p-4">Supplier</th>
+                        <th className="p-4">Cost Price</th>
+                        <th className="p-4">AI Suggested Price</th>
+                        <th className="p-4">Status</th>
+                        <th className="p-4">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {products.map(product => (
+                        <tr key={product.id} className="border-b hover:bg-gray-50">
+                            <td className="p-4 font-semibold">{product.name}</td>
+                            <td className="p-4">{product.supplierName}</td>
+                            <td className="p-4">${product.costPrice.toFixed(2)}</td>
+                            <td className="p-4 font-bold text-green-600">${(product.costPrice * 1.4).toFixed(2)}</td>
+                            <td className="p-4">
+                                {product.isPublished ? (
+                                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">Published</span>
+                                ) : (
+                                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-200 text-gray-800">Unpublished</span>
+                                )}
+                            </td>
+                            <td className="p-4">
+                                {!product.isPublished && (
+                                    <button onClick={() => onPublish(product.id)} className="bg-blue-500 text-white px-3 py-1 rounded-md font-semibold hover:bg-blue-600 text-sm">Publish</button>
+                                )}
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+        <AiInsight title="High Demand Product" content="'Strawberries' from Green Acres Farm have high search volume. Recommend publishing immediately with a premium markup to capture market interest." />
+    </div>
+);
+
+const PublishedProductsView: React.FC<{ products: SourcedProduct[] }> = ({ products }) => (
+    <div>
+        <h1 className="text-3xl font-bold mb-6 text-gray-800">Published (Final) Products</h1>
+         <p className="text-gray-600 mb-6 -mt-4">This is the final list of products available to customers on the platform.</p>
+        <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
+             <table className="w-full text-left">
+                <thead>
+                    <tr className="border-b">
+                        <th className="p-4">Product</th>
+                        <th className="p-4">Supplier</th>
+                        <th className="p-4">Cost Price</th>
+                        <th className="p-4">Selling Price</th>
+                        <th className="p-4">Margin</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {products.map(product => (
+                        <tr key={product.id} className="border-b hover:bg-gray-50">
+                            <td className="p-4 font-semibold">{product.name}</td>
+                            <td className="p-4">{product.supplierName}</td>
+                            <td className="p-4">${product.costPrice.toFixed(2)}</td>
+                            <td className="p-4 font-bold text-gray-800">${product.sellingPrice?.toFixed(2)}</td>
+                            <td className="p-4 font-semibold text-green-700">
+                                {product.sellingPrice ? `${(((product.sellingPrice - product.costPrice) / product.costPrice) * 100).toFixed(0)}%` : 'N/A'}
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+        <AiInsight title="Pricing Optimization" content="The current 40% margin on 'Organic Carrots' is below the category average of 55%. Consider a price increase to $2.79 to improve profitability without significantly impacting demand." />
+    </div>
+);
 
 const LogisticsManagementView: React.FC = () => (
     <div>
@@ -217,5 +352,6 @@ const DisputeManagementView: React.FC = () => (
         <AiInsight title="Auto-Prioritization & Summary" content="Ticket #t2 ('Payment not received') has been auto-prioritized to 'Urgent' based on keywords 'payment' and 'account'. Summary: Farmer John is missing a quarterly payment and requires immediate finance team follow-up." />
     </div>
 );
+// #endregion
 
 export default AdminView;

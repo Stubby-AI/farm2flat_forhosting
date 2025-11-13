@@ -1,4 +1,4 @@
-import { Product, SubscriptionBox, SubscriptionSize, Order, User, Farmer, Hub, CartItem, PortalUser, StaffMember, Supplier, Customer, PurchaseOrder, Business, Driver, Vehicle, Route, SeasonalTrend, Campaign, Ticket } from '../types';
+import { Product, SubscriptionBox, SubscriptionSize, Order, User, Farmer, Hub, CartItem, PortalUser, StaffMember, Supplier, Customer, PurchaseOrder, Business, Driver, Vehicle, Route, SeasonalTrend, Campaign, Ticket, SourcedProduct } from '../types';
 
 export const mockProducts: Product[] = [
   { id: 'p1', name: 'Organic Carrots', price: 2.50, unit: 'bunch', imageUrl: 'https://picsum.photos/id/1080/400/300', farmer: 'Green Acres Farm' },
@@ -145,8 +145,23 @@ export const mockFarmerSuppliers: Supplier[] = [
     { id: 'sup2', name: 'AgriPak Solutions', category: 'Packaging', contactEmail: 'contact@agripak.com' },
 ];
 
+export const mockFarmerDirectOrders: Order[] = [
+    {
+        id: 'd-o1',
+        userId: 'farmer1',
+        customerId: 'cust1',
+        date: '2024-07-25',
+        items: [
+            { cartId: 'fc1', id: 'p1', name: 'Organic Carrots', price: 2.50, imageUrl: '', quantity: 20, type: 'product', unit: 'bunch' },
+            { cartId: 'fc2', id: 'p3', name: 'Red Bell Peppers', price: 1.50, imageUrl: '', quantity: 30, type: 'product', unit: 'each' },
+        ],
+        total: 95.00,
+        status: 'Delivered',
+    }
+];
+
 export const mockFarmerCustomers: Customer[] = [
-    { id: 'cust1', name: 'The Corner Cafe', type: 'Restaurant', contactEmail: 'orders@cornercafe.com' },
+    { id: 'cust1', name: 'The Corner Cafe', type: 'Restaurant', contactEmail: 'orders@cornercafe.com', orderHistory: mockFarmerDirectOrders },
     { id: 'cust2', name: 'Local Roots Grocer', type: 'Grocer', contactEmail: 'buyer@localroots.com' },
     { id: 'cust3', name: 'FrescoHub', type: 'Platform', contactEmail: 'procurement@frescohub.com' },
 ];
@@ -174,16 +189,56 @@ export const mockFarmers: Farmer[] = [
         suppliers: mockFarmerSuppliers,
         customers: mockFarmerCustomers,
         purchaseHistory: mockFarmerPurchases,
+        performanceScore: 92,
     },
-    { id: 'f2', name: 'Sunnyvale Orchards', location: 'Niagara, ON', specialty: ['Fruits', 'Apples', 'Tomatoes'], productIds: ['p2', 'p5'] },
-    { id: 'f3', name: 'Riverbend Gardens', location: 'Ottawa, ON', specialty: ['Leafy Greens', 'Herbs'], productIds: ['p4', 'p6', 'p8'] },
-    { id: 'f4', name: 'Prairie Harvest', location: 'Brant, ON', specialty: ['Grains', 'Potatoes'] },
+    { 
+        id: 'f2', 
+        name: 'Sunnyvale Orchards', 
+        location: 'Niagara, ON', 
+        specialty: ['Fruits', 'Apples', 'Tomatoes'], 
+        productIds: ['p2', 'p5'],
+        performanceScore: 95,
+    },
+    { 
+        id: 'f3', 
+        name: 'Riverbend Gardens', 
+        location: 'Ottawa, ON', 
+        specialty: ['Leafy Greens', 'Herbs'], 
+        productIds: ['p4', 'p6', 'p8'],
+        performanceScore: 88,
+    },
+    { 
+        id: 'f4', 
+        name: 'Prairie Harvest', 
+        location: 'Brant, ON', 
+        specialty: ['Grains', 'Potatoes'],
+        performanceScore: 81,
+    },
 ];
 
 export const mockBusinessProducts: Product[] = [
     { id: 'bp1', name: 'Garden Salad', price: 12.50, unit: 'plate', imageUrl: 'https://picsum.photos/id/203/400/300', farmer: 'The Grand Restaurant', moq: 1, isSeasonal: true },
     { id: 'bp2', name: 'Tomato Soup', price: 8.00, unit: 'bowl', imageUrl: 'https://picsum.photos/id/204/400/300', farmer: 'The Grand Restaurant', moq: 1, isSeasonal: true },
     { id: 'bp3', name: 'Roast Chicken', price: 24.00, unit: 'plate', imageUrl: 'https://picsum.photos/id/205/400/300', farmer: 'The Grand Restaurant', moq: 1, isSeasonal: false },
+];
+
+export const mockBusinessCustomerOrders: Order[] = [
+    {
+        id: 'b-cust-o1',
+        userId: 'biz1',
+        customerId: 'bcust1',
+        date: '2024-07-28',
+        items: [
+            { cartId: 'bc1', id: 'bp1', name: 'Garden Salad', price: 12.50, imageUrl: '', quantity: 10, type: 'product', unit: 'plate' },
+        ],
+        total: 125.00,
+        status: 'Delivered',
+    }
+];
+
+export const mockBusinessCustomers: Customer[] = [
+    { id: 'bcust1', name: 'Regular Diner A', type: 'Individual', contactEmail: 'diner-a@example.com', orderHistory: mockBusinessCustomerOrders },
+    { id: 'bcust2', name: 'Corporate Catering Client', type: 'Individual', contactEmail: 'catering@example.com' }
 ];
 
 export const mockBusinesses: Business[] = [
@@ -195,7 +250,7 @@ export const mockBusinesses: Business[] = [
         contactEmail: 'buyer@restaurant.com',
         staff: [{ id: 'bs1', name: 'Chef Antoine', role: 'Head Chef', contact: 'chef@restaurant.com' }],
         suppliers: [{id: 'fhub', name: 'FrescoHub', category: 'Fresh Produce', contactEmail: 'sales@frescohub.com'}],
-        customers: [], // B2C customers not tracked here
+        customers: mockBusinessCustomers,
         purchaseHistory: mockOrders.filter(o => o.userId === 'b1'),
         products: mockBusinessProducts,
     }
@@ -265,4 +320,17 @@ export const mockTickets: Ticket[] = [
     { id: 't1', userId: 'u1', userName: 'Jane Doe', userRole: 'user', subject: 'Late Delivery', description: 'My order o3 was supposed to arrive yesterday but I have not received it yet.', status: 'Open', priority: 'High', createdDate: '2023-11-03', assignedTo: 'admin1' },
     { id: 't2', userId: 'farmer1', userName: 'John Farmer', userRole: 'farmer', subject: 'Payment not received for Q3', description: 'The quarterly payment for our produce has not been reflected in our account.', status: 'In Progress', priority: 'Urgent', createdDate: '2023-10-30', assignedTo: 'admin1' },
     { id: 't3', userId: 'biz1', userName: 'The Grand Restaurant', userRole: 'business', subject: 'Incorrect produce in order o2', description: 'We received spinach instead of kale in our last order.', status: 'Resolved', priority: 'Medium', createdDate: '2023-10-30' },
+];
+
+export const mockSourcedProducts: SourcedProduct[] = [
+    { id: 'sp1', name: 'Organic Carrots', supplierId: 'f1', supplierName: 'Green Acres Farm', costPrice: 1.80, unit: 'bunch', imageUrl: 'https://picsum.photos/id/1080/400/300', category: 'Vegetable', isPublished: true, sellingPrice: 2.50 },
+    { id: 'sp2', name: 'Heirloom Tomatoes', supplierId: 'f2', supplierName: 'Sunnyvale Orchards', costPrice: 2.90, unit: 'lb', imageUrl: 'https://picsum.photos/id/1078/400/300', category: 'Vegetable', isPublished: true, sellingPrice: 4.00 },
+    { id: 'sp3', name: 'Red Bell Peppers', supplierId: 'f1', supplierName: 'Green Acres Farm', costPrice: 1.05, unit: 'each', imageUrl: 'https://picsum.photos/id/1025/400/300', category: 'Vegetable', isPublished: false },
+    { id: 'sp4', name: 'Spinach', supplierId: 'f3', supplierName: 'Riverbend Gardens', costPrice: 2.10, unit: 'bag', imageUrl: 'https://picsum.photos/id/292/400/300', category: 'Vegetable', isPublished: true, sellingPrice: 3.00 },
+    { id: 'sp5', name: 'Gala Apples', supplierId: 'f2', supplierName: 'Sunnyvale Orchards', costPrice: 2.50, unit: 'lb', imageUrl: 'https://picsum.photos/id/431/400/300', category: 'Fruit', isPublished: false },
+    { id: 'sp6', name: 'Cucumbers', supplierId: 'f3', supplierName: 'Riverbend Gardens', costPrice: 0.70, unit: 'each', imageUrl: 'https://picsum.photos/id/202/400/300', category: 'Vegetable', isPublished: false },
+    { id: 'sp7', name: 'Potatoes', supplierId: 'f4', supplierName: 'Prairie Harvest', costPrice: 1.95, unit: '5lb bag', imageUrl: 'https://picsum.photos/id/1043/400/300', category: 'Vegetable', isPublished: true, sellingPrice: 2.75 },
+    { id: 'sp8', name: 'Onions', supplierId: 'f3', supplierName: 'Riverbend Gardens', costPrice: 0.90, unit: 'lb', imageUrl: 'https://picsum.photos/id/1079/400/300', category: 'Vegetable', isPublished: true, sellingPrice: 1.25 },
+    { id: 'sp9', name: 'Zucchini', supplierId: 'f1', supplierName: 'Green Acres Farm', costPrice: 1.25, unit: 'each', imageUrl: 'https://picsum.photos/id/211/400/300', category: 'Vegetable', isPublished: false },
+    { id: 'sp10', name: 'Strawberries', supplierId: 'f1', supplierName: 'Green Acres Farm', costPrice: 4.00, unit: 'quart', imageUrl: 'https://picsum.photos/id/1082/400/300', category: 'Fruit', isPublished: true, sellingPrice: 5.50 },
 ];

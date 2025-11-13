@@ -81,6 +81,7 @@ export interface PortalUser {
 export interface Order {
   id: string;
   userId: string;
+  customerId?: string; // For direct customers of farmers/businesses
   date: string;
   items: CartItem[];
   total: number;
@@ -117,6 +118,7 @@ export interface Customer {
     name: string;
     type: 'Restaurant' | 'Grocer' | 'Individual' | 'Platform';
     contactEmail: string;
+    orderHistory?: Order[];
 }
 
 export interface PurchaseOrder {
@@ -145,6 +147,7 @@ export interface Farmer {
   suppliers?: Supplier[];
   customers?: Customer[];
   purchaseHistory?: PurchaseOrder[];
+  performanceScore?: number;
 }
 
 export interface Business {
@@ -215,4 +218,17 @@ export interface Ticket {
   priority: 'Low' | 'Medium' | 'High' | 'Urgent';
   createdDate: string;
   assignedTo?: string; // admin user id
+}
+
+export interface SourcedProduct {
+  id: string;
+  name: string;
+  supplierId: string;
+  supplierName: string;
+  imageUrl: string;
+  unit: string;
+  category: string;
+  costPrice: number;
+  isPublished: boolean;
+  sellingPrice?: number;
 }

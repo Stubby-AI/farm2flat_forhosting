@@ -1,15 +1,15 @@
 import React, { useState, useMemo } from 'react';
-import { Farmer, Product, StaffMember, Supplier, Customer, PurchaseOrder } from '../types';
+import { Farmer, Product, StaffMember, Supplier, Customer, PurchaseOrder, Order } from '../types';
 import { mockFarmerProducts, mockImportedFarmerProducts, mockOrders } from '../mock/data';
 import { 
     LogoutIcon, LeafIcon, ChartBarIcon, BoxIcon, ClipboardListIcon, 
     CurrencyDollarIcon, SparklesIcon, UserCircleIcon, UploadIcon,
     UsersGroupIcon, BuildingStorefrontIcon, ReceiptPercentIcon, 
-    UsersIcon, FileDownloadIcon, PrinterIcon
+    UsersIcon, FileDownloadIcon, PrinterIcon, HomeModernIcon
 } from './Icons';
 
 type FarmerViewType = 
-    'DASHBOARD' | 'PRODUCTS' | 'ORDERS' | 'FINANCIALS' | 
+    'DASHBOARD' | 'PRODUCTS' | 'ORDERS' | 'FARM2FLAT' | 'FINANCIALS' | 
     'ANALYTICS' | 'PROFILE' | 'STAFF' | 'SUPPLIERS' | 'CUSTOMERS' | 'PURCHASES';
 
 interface FarmerViewProps {
@@ -28,6 +28,8 @@ const FarmerView: React.FC<FarmerViewProps> = ({ farmer, onLogout }) => {
                 return <ProductManagementView />;
             case 'ORDERS':
                 return <OrderFulfillmentView farmer={farmer} />;
+            case 'FARM2FLAT':
+                return <Farm2FlatView farmer={farmer} />;
             case 'FINANCIALS':
                 return <FinancialsView farmer={farmer} />;
             case 'ANALYTICS':
@@ -59,6 +61,7 @@ const FarmerView: React.FC<FarmerViewProps> = ({ farmer, onLogout }) => {
                         <NavItem icon={<ChartBarIcon className="w-5 h-5"/>} label="Dashboard" active={currentView === 'DASHBOARD'} onClick={() => setCurrentView('DASHBOARD')} />
                         <NavItem icon={<BoxIcon className="w-5 h-5"/>} label="My Products" active={currentView === 'PRODUCTS'} onClick={() => setCurrentView('PRODUCTS')} />
                         <NavItem icon={<ClipboardListIcon className="w-5 h-5"/>} label="Orders" active={currentView === 'ORDERS'} onClick={() => setCurrentView('ORDERS')} />
+                        <NavItem icon={<HomeModernIcon className="w-5 h-5"/>} label="Farm2Flat" active={currentView === 'FARM2FLAT'} onClick={() => setCurrentView('FARM2FLAT')} />
                         <NavItem icon={<ReceiptPercentIcon className="w-5 h-5"/>} label="Purchases" active={currentView === 'PURCHASES'} onClick={() => setCurrentView('PURCHASES')} />
                         <NavItem icon={<CurrencyDollarIcon className="w-5 h-5"/>} label="Financials" active={currentView === 'FINANCIALS'} onClick={() => setCurrentView('FINANCIALS')} />
                         <NavItem icon={<SparklesIcon className="w-5 h-5"/>} label="Analytics" active={currentView === 'ANALYTICS'} onClick={() => setCurrentView('ANALYTICS')} />
@@ -351,6 +354,52 @@ const OrderFulfillmentView: React.FC<{ farmer: Farmer }> = ({ farmer }) => {
     );
 };
 
+const Farm2FlatView: React.FC<{ farmer: Farmer }> = ({ farmer }) => {
+    // These are orders from FrescoHub to the farmer. For now, we simulate this.
+    // We can filter `mockOrders` where a farmer's product is present, and maybe the customer is a business.
+    const frescoHubOrders = mockOrders.filter(order => 
+        order.userId.startsWith('b') && order.items.some(item => farmer.productIds?.includes(item.id))
+    );
+
+    return (
+        <div>
+            <h1 className="text-3xl font-bold mb-2 text-gray-800">Farm2Flat Orders</h1>
+            <p className="text-gray-600 mb-6">These are your orders to fulfill for the FrescoHub platform.</p>
+             <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
+                {frescoHubOrders.length > 0 ? (
+                    <table className="w-full text-left">
+                        <thead>
+                            <tr className="border-b">
+                                <th className="p-4">Order ID</th>
+                                <th className="p-4">Date</th>
+                                <th className="p-4">Items</th>
+                                <th className="p-4">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {frescoHubOrders.map(order => (
+                                <tr key={order.id} className="border-b hover:bg-gray-50">
+                                    <td className="p-4">{order.id}</td>
+                                    <td className="p-4">{order.date}</td>
+                                    <td className="p-4">
+                                        <ul className="text-sm">
+                                            {order.items
+                                                .filter(item => farmer.productIds?.includes(item.id))
+                                                .map(item => <li key={item.cartId}>{item.name} (x{item.quantity})</li>)
+                                            }
+                                        </ul>
+                                    </td>
+                                    <td className="p-4">{order.status}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                ) : <p>No active orders from FrescoHub at the moment.</p>}
+            </div>
+        </div>
+    );
+};
+
 const FinancialsView: React.FC<{ farmer: Farmer }> = ({ farmer }) => (
      <div>
         <h1 className="text-3xl font-bold mb-6 text-gray-800">Financials</h1>
@@ -434,21 +483,64 @@ const SupplierManagementView: React.FC<{ suppliers: Supplier[] }> = ({ suppliers
     </div>
 );
 
-const CustomerManagementView: React.FC<{ customers: Customer[] }> = ({ customers }) => (
-    <div>
-        <h1 className="text-3xl font-bold mb-6 text-gray-800">Customer Management</h1>
-        <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
-            <table className="w-full text-left">
-                 <thead>
-                    <tr className="border-b"><th className="p-4">Name</th><th className="p-4">Type</th><th className="p-4">Contact Email</th></tr>
-                </thead>
-                <tbody>
-                    {customers.map(c => (<tr key={c.id} className="border-b hover:bg-gray-50"><td className="p-4">{c.name}</td><td className="p-4">{c.type}</td><td className="p-4">{c.contactEmail}</td></tr>))}
-                </tbody>
-            </table>
+const CustomerManagementView: React.FC<{ customers: Customer[] }> = ({ customers }) => {
+    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+
+    if (selectedCustomer) {
+        return (
+            <div>
+                <button onClick={() => setSelectedCustomer(null)} className="mb-4 text-green-600 hover:underline font-semibold">
+                    &larr; Back to all customers
+                </button>
+                <h1 className="text-3xl font-bold mb-2 text-gray-800">{selectedCustomer.name}</h1>
+                <p className="text-gray-500 mb-6">{selectedCustomer.contactEmail}</p>
+
+                <h2 className="text-2xl font-semibold mb-4 text-gray-700">Order History</h2>
+                <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
+                    {selectedCustomer.orderHistory && selectedCustomer.orderHistory.length > 0 ? (
+                         <table className="w-full text-left">
+                            <thead>
+                                <tr className="border-b"><th className="p-4">Order ID</th><th className="p-4">Date</th><th className="p-4">Total</th><th className="p-4">Status</th></tr>
+                            </thead>
+                            <tbody>
+                                {selectedCustomer.orderHistory.map(o => (
+                                    <tr key={o.id} className="border-b hover:bg-gray-50">
+                                        <td className="p-4">{o.id}</td>
+                                        <td className="p-4">{o.date}</td>
+                                        <td className="p-4">${o.total.toFixed(2)}</td>
+                                        <td className="p-4">{o.status}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    ) : <p>No order history found for this customer.</p>}
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div>
+            <h1 className="text-3xl font-bold mb-6 text-gray-800">Customer Management</h1>
+            <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
+                <table className="w-full text-left">
+                     <thead>
+                        <tr className="border-b"><th className="p-4">Name</th><th className="p-4">Type</th><th className="p-4">Contact Email</th></tr>
+                    </thead>
+                    <tbody>
+                        {customers.map(c => (
+                            <tr key={c.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedCustomer(c)}>
+                                <td className="p-4 font-semibold text-green-700">{c.name}</td>
+                                <td className="p-4">{c.type}</td>
+                                <td className="p-4">{c.contactEmail}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 const PurchaseManagementView: React.FC<{ purchases: PurchaseOrder[], suppliers: Supplier[] }> = ({ purchases, suppliers }) => (
     <div>
