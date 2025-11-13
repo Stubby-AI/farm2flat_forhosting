@@ -5,8 +5,7 @@ import {
     LogoutIcon, LeafIcon, ChartBarIcon, BoxIcon, ClipboardListIcon, 
     CurrencyDollarIcon, SparklesIcon, UserCircleIcon, UploadIcon,
     UsersGroupIcon, BuildingStorefrontIcon, ReceiptPercentIcon, 
-    // FIX: Import `UsersIcon` to resolve reference error.
-    UsersIcon 
+    UsersIcon, FileDownloadIcon, PrinterIcon
 } from './Icons';
 
 type FarmerViewType = 
@@ -131,6 +130,7 @@ const DashboardView: React.FC<{ farmer: Farmer }> = ({ farmer }) => (
 
 const ProductManagementView: React.FC = () => {
     const [products, setProducts] = useState<Product[]>(mockFarmerProducts);
+    const [lastUpdated, setLastUpdated] = useState<string | null>(null);
     const [filters, setFilters] = useState({
         name: '',
         category: 'all',
@@ -144,9 +144,8 @@ const ProductManagementView: React.FC = () => {
     };
     
     const handleImport = () => {
-        // In a real app, this would involve parsing a file.
-        // For this demo, we'll just replace the state with mock imported data.
         setProducts(mockImportedFarmerProducts);
+        setLastUpdated(new Date().toLocaleString());
         alert('Products imported successfully! The current product list has been replaced.');
     };
 
@@ -163,6 +162,52 @@ const ProductManagementView: React.FC = () => {
     const categories = useMemo(() => [...new Set(products.map(p => p.category).filter(Boolean))], [products]);
     const subcategories = useMemo(() => [...new Set(products.map(p => p.subcategory).filter(Boolean))], [products]);
     const statuses = useMemo(() => [...new Set(products.map(p => p.status).filter(Boolean))], [products]);
+
+    const handleExportCsv = () => {
+        const headers = ['Name', 'Category', 'Subcategory', 'Available Date', 'Price', 'Unit', 'Quantity', 'Status', 'MOQ', 'Seasonal'];
+        const rows = filteredProducts.map(p => [
+            `"${p.name.replace(/"/g, '""')}"`,
+            p.category || '',
+            p.subcategory || '',
+            p.availableDate || '',
+            p.price,
+            p.unit,
+            p.quantity || 0,
+            p.status || '',
+            p.moq || 'N/A',
+            p.isSeasonal ? 'Yes' : 'No'
+        ]);
+    
+        let csvContent = "data:text/csv;charset=utf-8," 
+            + headers.join(",") + "\n" 
+            + rows.map(e => e.join(",")).join("\n");
+        
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "product_inventory.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handlePrint = () => {
+        const printWindow = window.open('', '', 'height=800,width=1000');
+        if (printWindow) {
+            printWindow.document.write('<html><head><title>Product Inventory</title>');
+            printWindow.document.write('<style>body{font-family:sans-serif;padding:20px} table{width:100%;border-collapse:collapse;margin-top:20px} th,td{border:1px solid #ddd;padding:8px;text-align:left} th{background-color:#f2f2f2} h1{color:#333}</style>');
+            printWindow.document.write('</head><body>');
+            printWindow.document.write('<h1>Product Inventory</h1>');
+            const table = document.getElementById('product-table');
+            if (table) {
+                 printWindow.document.write(table.outerHTML);
+            }
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+        }
+    };
 
 
     return (
@@ -183,7 +228,7 @@ const ProductManagementView: React.FC = () => {
                  <p className="text-xs text-gray-500 mt-2">Uploading a new file will replace your entire current product list.</p>
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow-md mb-8">
+            <div className="bg-white p-6 rounded-lg shadow-md mb-6">
                 <h3 className="text-lg font-semibold text-gray-700 mb-4">Filters</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <input type="text" name="name" placeholder="Product name..." value={filters.name} onChange={handleFilterChange} className="p-2 border rounded-md" />
@@ -200,10 +245,16 @@ const ProductManagementView: React.FC = () => {
                          {statuses.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                 </div>
+                {lastUpdated && <p className="text-xs text-gray-500 mt-4">Last data imported: {lastUpdated}</p>}
+            </div>
+
+            <div className="flex justify-start items-center mb-4 gap-2">
+                <button onClick={handleExportCsv} className="bg-gray-700 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-800 flex items-center gap-2 text-sm"><FileDownloadIcon className="w-4 h-4" />Export to CSV</button>
+                <button onClick={handlePrint} className="bg-gray-700 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-800 flex items-center gap-2 text-sm"><PrinterIcon className="w-4 h-4" />Print Table</button>
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
-                <table className="w-full text-left">
+                <table className="w-full text-left" id="product-table">
                     <thead>
                         <tr className="border-b">
                             <th className="p-4">Product Name</th>
@@ -211,6 +262,8 @@ const ProductManagementView: React.FC = () => {
                             <th className="p-4">Available Date</th>
                             <th className="p-4">Price</th>
                             <th className="p-4">Available Qty</th>
+                            <th className="p-4">MOQ</th>
+                            <th className="p-4">Seasonal</th>
                             <th className="p-4">Status</th>
                             <th className="p-4">Actions</th>
                         </tr>
@@ -223,6 +276,8 @@ const ProductManagementView: React.FC = () => {
                                 <td className="p-4">{product.availableDate}</td>
                                 <td className="p-4">${product.price.toFixed(2)} / {product.unit}</td>
                                 <td className="p-4 font-bold">{product.quantity}</td>
+                                <td className="p-4">{product.moq || 'N/A'}</td>
+                                <td className="p-4">{product.isSeasonal ? 'Yes' : 'No'}</td>
                                 <td className="p-4">
                                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                                         product.status === 'Available' ? 'bg-green-100 text-green-800' :

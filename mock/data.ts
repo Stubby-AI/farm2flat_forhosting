@@ -148,6 +148,7 @@ export const mockFarmerSuppliers: Supplier[] = [
 export const mockFarmerCustomers: Customer[] = [
     { id: 'cust1', name: 'The Corner Cafe', type: 'Restaurant', contactEmail: 'orders@cornercafe.com' },
     { id: 'cust2', name: 'Local Roots Grocer', type: 'Grocer', contactEmail: 'buyer@localroots.com' },
+    { id: 'cust3', name: 'FrescoHub', type: 'Platform', contactEmail: 'procurement@frescohub.com' },
 ];
 
 export const mockFarmerPurchases: PurchaseOrder[] = [
@@ -201,17 +202,17 @@ export const mockBusinesses: Business[] = [
 
 
 export const mockFarmerProducts: Product[] = [
-    { ...mockProducts[0], category: 'Vegetable', subcategory: 'Root', availableDate: '2024-05-20', status: 'Available', quantity: 150, farmer: 'Green Acres Farm' }, // Carrots
-    { ...mockProducts[2], category: 'Vegetable', subcategory: 'Fruit Vegetable', availableDate: '2024-05-22', status: 'Available', quantity: 80, farmer: 'Green Acres Farm' }, // Peppers
-    { ...mockProducts[6], category: 'Vegetable', subcategory: 'Tuber', availableDate: '2024-05-25', status: 'Unavailable', quantity: 0, farmer: 'Green Acres Farm' }, // Potatoes
-    { ...mockProducts[3], category: 'Vegetable', subcategory: 'Leafy Green', availableDate: '2024-05-20', status: 'Available', quantity: 120, farmer: 'Riverbend Gardens' }, // Spinach
-    { ...mockProducts[4], category: 'Fruit', subcategory: 'Pome', availableDate: '2024-06-01', status: 'Available', quantity: 200, farmer: 'Sunnyvale Orchards' }, // Apples
+    { ...mockProducts[0], category: 'Vegetable', subcategory: 'Root', availableDate: '2024-05-20', status: 'Available', quantity: 150, farmer: 'Green Acres Farm', moq: 10, isSeasonal: true }, // Carrots
+    { ...mockProducts[2], category: 'Vegetable', subcategory: 'Fruit Vegetable', availableDate: '2024-05-22', status: 'Available', quantity: 80, farmer: 'Green Acres Farm', moq: 5, isSeasonal: true }, // Peppers
+    { ...mockProducts[6], category: 'Vegetable', subcategory: 'Tuber', availableDate: '2024-05-25', status: 'Unavailable', quantity: 0, farmer: 'Green Acres Farm', moq: 20, isSeasonal: false }, // Potatoes
+    { ...mockProducts[3], category: 'Vegetable', subcategory: 'Leafy Green', availableDate: '2024-05-20', status: 'Available', quantity: 120, farmer: 'Riverbend Gardens', moq: 15, isSeasonal: true }, // Spinach
+    { ...mockProducts[4], category: 'Fruit', subcategory: 'Pome', availableDate: '2024-06-01', status: 'Available', quantity: 200, farmer: 'Sunnyvale Orchards', moq: 25, isSeasonal: false }, // Apples
 ];
 
 export const mockImportedFarmerProducts: Product[] = [
-    { id: 'imp1', name: 'Zucchini', price: 1.75, unit: 'each', imageUrl: 'https://picsum.photos/id/211/400/300', farmer: 'Green Acres Farm', category: 'Vegetable', subcategory: 'Fruit Vegetable', availableDate: '2024-06-10', status: 'Available', quantity: 90 },
-    { id: 'imp2', name: 'Strawberries', price: 5.50, unit: 'quart', imageUrl: 'https://picsum.photos/id/1082/400/300', farmer: 'Green Acres Farm', category: 'Fruit', subcategory: 'Berry', availableDate: '2024-06-15', status: 'Available', quantity: 60 },
-    { id: 'imp3', name: 'Asparagus', price: 4.25, unit: 'bunch', imageUrl: 'https://picsum.photos/id/495/400/300', farmer: 'Green Acres Farm', category: 'Vegetable', subcategory: 'Stem', availableDate: '2024-06-05', status: 'Unavailable', quantity: 0 },
+    { id: 'imp1', name: 'Zucchini', price: 1.75, unit: 'each', imageUrl: 'https://picsum.photos/id/211/400/300', farmer: 'Green Acres Farm', category: 'Vegetable', subcategory: 'Fruit Vegetable', availableDate: '2024-06-10', status: 'Available', quantity: 90, moq: 12, isSeasonal: true },
+    { id: 'imp2', name: 'Strawberries', price: 5.50, unit: 'quart', imageUrl: 'https://picsum.photos/id/1082/400/300', farmer: 'Green Acres Farm', category: 'Fruit', subcategory: 'Berry', availableDate: '2024-06-15', status: 'Available', quantity: 60, moq: 1, isSeasonal: true },
+    { id: 'imp3', name: 'Asparagus', price: 4.25, unit: 'bunch', imageUrl: 'https://picsum.photos/id/495/400/300', farmer: 'Green Acres Farm', category: 'Vegetable', subcategory: 'Stem', availableDate: '2024-06-05', status: 'Unavailable', quantity: 0, moq: 10, isSeasonal: true },
 ];
 
 

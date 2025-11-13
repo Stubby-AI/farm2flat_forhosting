@@ -10,6 +10,8 @@ export interface Product {
   availableDate?: string;
   status?: 'Available' | 'Unavailable' | 'Archived';
   quantity?: number;
+  moq?: number;
+  isSeasonal?: boolean;
 }
 
 export interface CartItem {
@@ -113,7 +115,7 @@ export interface Supplier {
 export interface Customer {
     id: string;
     name: string;
-    type: 'Restaurant' | 'Grocer' | 'Individual';
+    type: 'Restaurant' | 'Grocer' | 'Individual' | 'Platform';
     contactEmail: string;
 }
 
