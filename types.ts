@@ -51,6 +51,24 @@ export interface User {
   email: string;
   postalCode: string;
   orderHistory: Order[];
+  familySize?: number;
+  preferences?: ('organic' | 'local-only' | 'vegan')[];
+  regularPurchaseList?: string[]; // array of product ids
+  groceryBudget?: {
+    amount: number;
+    period: 'Weekly' | 'Monthly';
+  };
+  loyaltyCredits?: number;
+}
+
+export type PortalUserRole = 'admin' | 'farmer' | 'business';
+
+export interface PortalUser {
+  id: string;
+  email: string;
+  password?: string;
+  name: string;
+  role: PortalUserRole;
 }
 
 export interface Order {
@@ -60,6 +78,10 @@ export interface Order {
   items: CartItem[];
   total: number;
   status: "Pending" | "Processing" | "Delivered";
+  deliveryDetails?: {
+    estimatedArrival: string;
+    trackingStatus: 'Order Confirmed' | 'Preparing' | 'Out for Delivery' | 'Delivered';
+  };
 }
 
 export interface Hub {

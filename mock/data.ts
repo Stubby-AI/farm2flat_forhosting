@@ -1,5 +1,4 @@
-
-import { Product, SubscriptionBox, SubscriptionSize, Order, User, Farmer, Hub, CartItem } from '../types';
+import { Product, SubscriptionBox, SubscriptionSize, Order, User, Farmer, Hub, CartItem, PortalUser } from '../types';
 
 export const mockProducts: Product[] = [
   { id: 'p1', name: 'Organic Carrots', price: 2.50, unit: 'bunch', imageUrl: 'https://picsum.photos/id/1080/400/300', farmer: 'Green Acres Farm' },
@@ -59,11 +58,42 @@ export const mockSubscriptionBoxes: SubscriptionBox[] = [
 const MOCK_ORDER_ITEMS: CartItem[] = mockProducts.slice(0, 3).map((p, i) => ({ ...p, quantity: i + 1, type: 'product', cartId: `mock-cart-${p.id}-${i}` }));
 
 export const mockOrders: Order[] = [
-  { id: 'o1', userId: 'u1', date: '2023-10-26', items: MOCK_ORDER_ITEMS, total: MOCK_ORDER_ITEMS.reduce((sum, item) => sum + item.price * item.quantity, 0), status: 'Delivered' },
-  // FIX: Added cartId to mock order items to match the CartItem type.
-  { id: 'o2', userId: 'u2', date: '2023-10-29', items: mockProducts.slice(2, 4).map((p,i) => ({ ...p, quantity: 1, type: 'product', cartId: `mock-cart-${p.id}-${i+3}` })), total: 4.50, status: 'Processing' },
-  // FIX: Added cartId to mock order items to match the CartItem type.
-  { id: 'o3', userId: 'u1', date: '2023-11-02', items: mockProducts.slice(4, 7).map((p,i) => ({ ...p, quantity: 2, type: 'product', cartId: `mock-cart-${p.id}-${i+5}` })), total: 12.50, status: 'Pending' },
+  { 
+    id: 'o1', 
+    userId: 'u1', 
+    date: '2023-10-26', 
+    items: MOCK_ORDER_ITEMS, 
+    total: MOCK_ORDER_ITEMS.reduce((sum, item) => sum + item.price * item.quantity, 0), 
+    status: 'Delivered',
+    deliveryDetails: {
+        estimatedArrival: 'October 27, 2023',
+        trackingStatus: 'Delivered'
+    } 
+  },
+  { 
+    id: 'o2', 
+    userId: 'u1', 
+    date: '2023-10-29', 
+    items: mockProducts.slice(2, 4).map((p,i) => ({ ...p, quantity: 1, type: 'product', cartId: `mock-cart-${p.id}-${i+3}` })), 
+    total: 4.50, 
+    status: 'Processing',
+    deliveryDetails: {
+        estimatedArrival: 'November 3, 2023',
+        trackingStatus: 'Out for Delivery'
+    }
+  },
+  { 
+    id: 'o3', 
+    userId: 'u1', 
+    date: '2023-11-02', 
+    items: mockProducts.slice(4, 7).map((p,i) => ({ ...p, quantity: 2, type: 'product', cartId: `mock-cart-${p.id}-${i+5}` })), 
+    total: 12.50, 
+    status: 'Pending',
+    deliveryDetails: {
+        estimatedArrival: 'November 8, 2023',
+        trackingStatus: 'Order Confirmed'
+    } 
+  },
 ];
 
 export const mockUser: User = {
@@ -72,7 +102,37 @@ export const mockUser: User = {
     email: 'jane.doe@example.com',
     postalCode: 'M5V 2T6',
     orderHistory: mockOrders.filter(o => o.userId === 'u1'),
+    familySize: 2,
+    preferences: ['organic', 'local-only'],
+    regularPurchaseList: ['p1', 'p4'],
+    groceryBudget: { amount: 100, period: 'Weekly' },
+    loyaltyCredits: 75.50,
 };
+
+export const mockPortalUsers: PortalUser[] = [
+  {
+    id: 'admin1',
+    email: 'admin@frescohub.com',
+    password: 'adminpassword',
+    name: 'Super Admin',
+    role: 'admin',
+  },
+  {
+    id: 'farmer1',
+    email: 'farmer@greenacres.com',
+    password: 'farmerpassword',
+    name: 'John Farmer (Green Acres)',
+    role: 'farmer',
+  },
+  {
+    id: 'biz1',
+    email: 'buyer@restaurant.com',
+    password: 'businesspassword',
+    name: 'The Grand Restaurant',
+    role: 'business',
+  },
+];
+
 
 export const mockFarmers: Farmer[] = [
     { id: 'f1', name: 'Green Acres Farm', location: 'Guelph, ON', specialty: ['Vegetables', 'Root Crops'] },

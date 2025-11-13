@@ -2,12 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { mockOrders, mockProducts, mockFarmers, mockHubs, mockHubFarmerMap } from '../mock/data';
 import { Order, Farmer, Hub } from '../types';
 import { getDemandForecast } from '../services/geminiService';
-import { UsersIcon, MapPinIcon, ChartBarIcon } from './Icons';
+import { UsersIcon, MapPinIcon, ChartBarIcon, LogoutIcon } from './Icons';
 
-type AdminView = 'DASHBOARD' | 'ORDERS' | 'PROCUREMENT' | 'HUBS' | 'FARMERS';
+type AdminViewType = 'DASHBOARD' | 'ORDERS' | 'PROCUREMENT' | 'HUBS' | 'FARMERS';
 
-const AdminView: React.FC = () => {
-  const [currentView, setCurrentView] = useState<AdminView>('DASHBOARD');
+interface AdminViewProps {
+  onLogout: () => void;
+}
+
+const AdminView: React.FC<AdminViewProps> = ({ onLogout }) => {
+  const [currentView, setCurrentView] = useState<AdminViewType>('DASHBOARD');
 
   const renderView = () => {
     switch (currentView) {
@@ -39,6 +43,9 @@ const AdminView: React.FC = () => {
             <li className="mb-4"><button onClick={() => setCurrentView('FARMERS')} className="w-full text-left hover:bg-gray-700 p-2 rounded flex items-center gap-3"><UsersIcon className="w-5 h-5"/>Farmers</button></li>
           </ul>
         </nav>
+        <div className="mt-auto">
+             <button onClick={onLogout} className="w-full text-left hover:bg-gray-700 p-2 rounded flex items-center gap-3"><LogoutIcon className="w-5 h-5"/>Logout</button>
+        </div>
       </aside>
       <main className="flex-1 p-8 overflow-y-auto">
         {renderView()}
