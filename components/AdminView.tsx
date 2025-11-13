@@ -25,6 +25,8 @@ const AdminView: React.FC<AdminViewProps> = ({ onLogout }) => {
   const [currentView, setCurrentView] = useState<AdminViewType>('PRODUCT_PUBLISHING');
   const [sourcedProducts, setSourcedProducts] = useState<SourcedProduct[]>(mockSourcedProducts);
   const [subscriptionBoxes, setSubscriptionBoxes] = useState<SubscriptionBox[]>(mockSubscriptionBoxes);
+  const [publishingFilter, setPublishingFilter] = useState<string[] | null>(null);
+
 
   const handlePublishProduct = (productId: string, sellingPrice: number, publishTarget: ('retail' | 'wholesale')[], availableQuantity: number) => {
       setSourcedProducts(prevProducts =>
@@ -34,6 +36,11 @@ const AdminView: React.FC<AdminViewProps> = ({ onLogout }) => {
                   : p
           )
       );
+  };
+
+  const handlePushToPublish = (productIds: string[]) => {
+    setPublishingFilter(productIds);
+    setCurrentView('PRODUCT_PUBLISHING');
   };
 
 
@@ -46,8 +53,21 @@ const AdminView: React.FC<AdminViewProps> = ({ onLogout }) => {
 
       // Sourcing & Publishing
       case 'SUPPLIERS': return <SupplierManagementView />;
-      case 'SUPPLIES_CURATION': return <SuppliesCurationView products={sourcedProducts} setSourcedProducts={setSourcedProducts} />;
-      case 'PRODUCT_PUBLISHING': return <ProductPublishingView products={sourcedProducts.filter(p => p.publishStatus === 'unpublished')} onPublish={handlePublishProduct} />;
+      case 'SUPPLIES_CURATION': return <SuppliesCurationView products={sourcedProducts} setSourcedProducts={setSourcedProducts} onPushToPublish={handlePushToPublish} />;
+      case 'PRODUCT_PUBLISHING':
+        const allUnpublished = sourcedProducts.filter(p => p.publishStatus === 'unpublished');
+        const productsToPublish = publishingFilter
+          ? allUnpublished.filter(p => publishingFilter.includes(p.id))
+          : allUnpublished;
+        return (
+          <ProductPublishingView
+            products={productsToPublish}
+            allProducts={sourcedProducts}
+            onPublish={handlePublishProduct}
+            isFiltered={!!publishingFilter}
+            onClearFilter={() => setPublishingFilter(null)}
+          />
+        );
       case 'PUBLISHED_RETAIL': return <PublishedProductsView title="Published Products (Retail)" products={sourcedProducts.filter(p => p.publishStatus === 'published' && p.publishTarget?.includes('retail'))} />;
       case 'PUBLISHED_WHOLESALE': return <PublishedProductsView title="Published Products (Wholesale)" products={sourcedProducts.filter(p => p.publishStatus === 'published' && p.publishTarget?.includes('wholesale'))} />;
       
@@ -66,7 +86,7 @@ const AdminView: React.FC<AdminViewProps> = ({ onLogout }) => {
       // Intelligence
       case 'SEASONALITY': return <SeasonalityView />;
       
-      default: return <ProductPublishingView products={sourcedProducts.filter(p => p.publishStatus === 'unpublished')} onPublish={handlePublishProduct} />;
+      default: return <ProductPublishingView products={sourcedProducts.filter(p => p.publishStatus === 'unpublished')} allProducts={sourcedProducts} onPublish={handlePublishProduct} />;
     }
   };
 
@@ -80,7 +100,7 @@ const AdminView: React.FC<AdminViewProps> = ({ onLogout }) => {
             <ul className="space-y-1">
                 <NavItem icon={<BuildingOffice2Icon className="w-5 h-5"/>} label="Supplier Management" active={currentView === 'SUPPLIERS'} onClick={() => setCurrentView('SUPPLIERS')} />
                 <NavItem icon={<ShoppingBagIcon className="w-5 h-5"/>} label="Supplies & Curation" active={currentView === 'SUPPLIES_CURATION'} onClick={() => setCurrentView('SUPPLIES_CURATION')} />
-                <NavItem icon={<RocketLaunchIcon className="w-5 h-5"/>} label="Product Publishing" active={currentView === 'PRODUCT_PUBLISHING'} onClick={() => setCurrentView('PRODUCT_PUBLISHING')} />
+                <NavItem icon={<RocketLaunchIcon className="w-5 h-5"/>} label="Product Publishing" active={currentView === 'PRODUCT_PUBLISHING'} onClick={() => { setPublishingFilter(null); setCurrentView('PRODUCT_PUBLISHING'); }} />
                 <NavItem icon={<CheckBadgeIcon className="w-5 h-5"/>} label="Published (Retail)" active={currentView === 'PUBLISHED_RETAIL'} onClick={() => setCurrentView('PUBLISHED_RETAIL')} />
                 <NavItem icon={<BuildingStorefrontIcon className="w-5 h-5"/>} label="Published (Wholesale)" active={currentView === 'PUBLISHED_WHOLESALE'} onClick={() => setCurrentView('PUBLISHED_WHOLESALE')} />
             </ul>
@@ -241,13 +261,21 @@ const BusinessCustomersView: React.FC = () => {
 };
 
 // Sourcing & Publishing Views
-const SuppliesCurationView: React.FC<{ products: SourcedProduct[], setSourcedProducts: React.Dispatch<React.SetStateAction<SourcedProduct[]>> }> = ({ products, setSourcedProducts }) => {
-    const [filters, setFilters] = useState({ name: '', category: 'all', supplier: 'all' });
+const SuppliesCurationView: React.FC<{ 
+    products: SourcedProduct[], 
+    setSourcedProducts: React.Dispatch<React.SetStateAction<SourcedProduct[]>>,
+    onPushToPublish: (productIds: string[]) => void
+}> = ({ products, setSourcedProducts, onPushToPublish }) => {
+    const [filters, setFilters] = useState({ name: '', category: 'all', supplier: 'all', unit: 'all' });
     const [uploadedFiles, setUploadedFiles] = useState<FileList | null>(null);
+    const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
+    const [editMode, setEditMode] = useState(false);
+    const [editedData, setEditedData] = useState<Record<string, Partial<SourcedProduct>>>({});
 
     // Dynamic options for filters
     const categories = useMemo(() => [...new Set(products.map(p => p.category).filter(Boolean))], [products]);
     const suppliers = useMemo(() => [...new Set(products.map(p => p.supplierName).filter(Boolean))], [products]);
+    const units = useMemo(() => [...new Set(products.map(p => p.unit).filter(Boolean))], [products]);
     
     // Memoized filtering logic
     const filteredProducts = useMemo(() => {
@@ -255,7 +283,8 @@ const SuppliesCurationView: React.FC<{ products: SourcedProduct[], setSourcedPro
             const nameMatch = p.name.toLowerCase().includes(filters.name.toLowerCase()) || (p.baseProductName || '').toLowerCase().includes(filters.name.toLowerCase());
             const categoryMatch = filters.category === 'all' || p.category === filters.category;
             const supplierMatch = filters.supplier === 'all' || p.supplierName === filters.supplier;
-            return nameMatch && categoryMatch && supplierMatch;
+            const unitMatch = filters.unit === 'all' || p.unit === filters.unit;
+            return nameMatch && categoryMatch && supplierMatch && unitMatch;
         });
     }, [products, filters]);
 
@@ -274,10 +303,6 @@ const SuppliesCurationView: React.FC<{ products: SourcedProduct[], setSourcedPro
             alert('Please select at least one file to upload.');
             return;
         }
-
-        // --- AI Simulation ---
-        // In a real application, you would parse the files (e.g., CSV) and use an AI service
-        // to normalize and suggest products. Here, we'll simulate this by adding mock data.
         const newProducts: SourcedProduct[] = [
             { id: `sp_new_${Date.now()}`, name: 'Kale', baseProductName: 'Kale', supplierId: 'f3', supplierName: 'Riverbend Gardens', costPrice: 2.20, unit: 'bunch', imageUrl: 'https://picsum.photos/id/500/400/300', category: 'Vegetable', publishStatus: 'unpublished', availableQuantity: 100 },
             { id: `sp_new_${Date.now()+1}`, name: 'Organic Blueberries', baseProductName: 'Blueberries', supplierId: 'f2', supplierName: 'Sunnyvale Orchards', costPrice: 4.50, unit: 'pint', imageUrl: 'https://picsum.photos/id/1083/400/300', category: 'Fruit', publishStatus: 'unpublished', availableQuantity: 80 },
@@ -286,11 +311,10 @@ const SuppliesCurationView: React.FC<{ products: SourcedProduct[], setSourcedPro
         setSourcedProducts(prev => [...prev, ...newProducts]);
         alert(`${uploadedFiles.length} file(s) analyzed and new products have been added to the table.`);
         const fileInput = document.getElementById('file-upload-input') as HTMLInputElement;
-        if (fileInput) fileInput.value = ''; // Reset file input
+        if (fileInput) fileInput.value = '';
         setUploadedFiles(null);
     };
 
-    // 1. Find the cheapest product for each base product name using the filtered list.
     const cheapestProductsMap = useMemo(() => {
         const groups: { [key: string]: SourcedProduct[] } = {};
         filteredProducts.forEach(p => {
@@ -309,7 +333,6 @@ const SuppliesCurationView: React.FC<{ products: SourcedProduct[], setSourcedPro
         return cheapestMap;
     }, [filteredProducts]);
 
-    // 2. Sort products to group them visually in the table, now using the filtered list
     const processedProducts = useMemo(() => {
         const sorted = [...filteredProducts].sort((a, b) => {
             const nameA = a.baseProductName || a.name;
@@ -323,12 +346,63 @@ const SuppliesCurationView: React.FC<{ products: SourcedProduct[], setSourcedPro
         return sorted.map(p => {
             const category = p.baseProductName || p.name;
             const isFirst = !seenCategories.has(category);
-            if (isFirst) {
-                seenCategories.add(category);
-            }
+            if (isFirst) seenCategories.add(category);
             return { ...p, isFirstInCategory: isFirst };
         });
     }, [filteredProducts]);
+    
+    const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.checked) {
+            setSelectedProducts(new Set(processedProducts.map(p => p.id)));
+        } else {
+            setSelectedProducts(new Set());
+        }
+    };
+
+    const handleSelectProduct = (productId: string, isSelected: boolean) => {
+        setSelectedProducts(prev => {
+            const newSet = new Set(prev);
+            if (isSelected) newSet.add(productId);
+            else newSet.delete(productId);
+            return newSet;
+        });
+    };
+    
+    const handleEdit = (productId: string, field: keyof SourcedProduct, value: string | number) => {
+        setEditedData(prev => ({
+            ...prev,
+            [productId]: { ...prev[productId], [field]: value }
+        }));
+    };
+    
+    const handleSaveChanges = () => {
+        const updatedProducts = products.map(p => {
+            const edits = editedData[p.id];
+            if (edits) {
+                const updatedProduct = { ...p, ...edits };
+                if (edits.costPrice) updatedProduct.costPrice = Number(edits.costPrice);
+                return updatedProduct;
+            }
+            return p;
+        });
+        setSourcedProducts(updatedProducts);
+        setEditedData({});
+        setEditMode(false);
+    };
+
+    const handleCancelEdit = () => {
+        setEditedData({});
+        setEditMode(false);
+    };
+    
+    const handlePushSelected = () => {
+        if (selectedProducts.size === 0) {
+            alert('Please select products to push.');
+            return;
+        }
+        onPushToPublish(Array.from(selectedProducts));
+        setSelectedProducts(new Set());
+    };
 
     return (
         <div>
@@ -338,18 +412,8 @@ const SuppliesCurationView: React.FC<{ products: SourcedProduct[], setSourcedPro
             <div className="bg-white p-6 rounded-lg shadow-md mb-8">
                 <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">Upload & Analyze Supplier Lists</h3>
                 <div className="flex items-center gap-4">
-                    <input 
-                        id="file-upload-input"
-                        type="file" 
-                        multiple 
-                        onChange={handleFileChange} 
-                        className="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" 
-                    />
-                    <button 
-                        onClick={handleAnalyzeAndAdd} 
-                        disabled={!uploadedFiles || uploadedFiles.length === 0} 
-                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-indigo-700 flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                    >
+                    <input id="file-upload-input" type="file" multiple onChange={handleFileChange} className="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+                    <button onClick={handleAnalyzeAndAdd} disabled={!uploadedFiles || uploadedFiles.length === 0} className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-indigo-700 flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed">
                         <SparklesIcon className="w-5 h-5" /> Analyze & Add
                     </button>
                 </div>
@@ -358,7 +422,7 @@ const SuppliesCurationView: React.FC<{ products: SourcedProduct[], setSourcedPro
 
             <div className="bg-white p-6 rounded-lg shadow-md mb-6">
                 <h3 className="text-lg font-semibold text-gray-700 mb-4">Filters</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <input type="text" name="name" placeholder="Filter by name..." value={filters.name} onChange={handleFilterChange} className="p-2 border rounded-md" />
                     <select name="category" value={filters.category} onChange={handleFilterChange} className="p-2 border rounded-md bg-white">
                         <option value="all">All Categories</option>
@@ -368,20 +432,39 @@ const SuppliesCurationView: React.FC<{ products: SourcedProduct[], setSourcedPro
                         <option value="all">All Suppliers</option>
                         {suppliers.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
+                    <select name="unit" value={filters.unit} onChange={handleFilterChange} className="p-2 border rounded-md bg-white">
+                        <option value="all">All Units</option>
+                        {units.map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
                 </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-lg shadow-md mb-6 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    {editMode ? (
+                        <>
+                            <button onClick={handleSaveChanges} className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700">Save Changes</button>
+                            <button onClick={handleCancelEdit} className="bg-gray-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-600">Cancel</button>
+                        </>
+                    ) : (
+                        <button onClick={() => setEditMode(true)} className="bg-yellow-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-yellow-600">Enable Manual Adjustments</button>
+                    )}
+                </div>
+                <button onClick={handlePushSelected} disabled={selectedProducts.size === 0 || editMode} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                    Push Selected to Publishing ({selectedProducts.size})
+                </button>
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
                 <table className="w-full text-left text-sm">
                     <thead className="border-b bg-gray-50">
                         <tr>
-                            <th className="p-4 font-semibold text-gray-600 uppercase tracking-wider">Product Category</th>
+                            <th className="p-4 w-10"><input type="checkbox" onChange={handleSelectAll} checked={selectedProducts.size > 0 && selectedProducts.size === processedProducts.length} className="h-4 w-4" /></th>
                             <th className="p-4 font-semibold text-gray-600 uppercase tracking-wider">Product Name</th>
                             <th className="p-4 font-semibold text-gray-600 uppercase tracking-wider">Supplier</th>
                             <th className="p-4 font-semibold text-gray-600 uppercase tracking-wider">Price</th>
                             <th className="p-4 font-semibold text-gray-600 uppercase tracking-wider">Unit</th>
-                            <th className="p-4 font-semibold text-gray-600 uppercase tracking-wider">Normalized Price</th>
-                            <th className="p-4 font-semibold text-gray-600 uppercase tracking-wider">Cheapest Price Per Unit</th>
+                            <th className="p-4 font-semibold text-gray-600 uppercase tracking-wider">Cheapest Price</th>
                             <th className="p-4 font-semibold text-gray-600 uppercase tracking-wider flex items-center gap-2"><SparklesIcon className="w-5 h-5 text-indigo-500" /> AI Insight</th>
                         </tr>
                     </thead>
@@ -389,36 +472,23 @@ const SuppliesCurationView: React.FC<{ products: SourcedProduct[], setSourcedPro
                         {processedProducts.map((item) => {
                             const category = item.baseProductName || item.name;
                             const cheapest = cheapestProductsMap.get(category);
+                            const isSelected = selectedProducts.has(item.id);
+                            const currentItem = editedData[item.id] ? { ...item, ...editedData[item.id] } : item;
 
                             return (
-                                <tr key={item.id} className="hover:bg-gray-50">
-                                    <td className="p-4 font-semibold text-gray-800">{category}</td>
-                                    <td className="p-4">{item.name}</td>
-                                    <td className="p-4 text-gray-600">{item.supplierName}</td>
-                                    <td className="p-4 font-mono font-semibold">${item.costPrice.toFixed(2)}</td>
-                                    <td className="p-4 text-gray-500">{item.unit}</td>
-                                    <td className="p-4 text-gray-500">—</td>
-                                    <td className="p-4 font-semibold">
-                                        {item.isFirstInCategory && cheapest ? (
-                                            <span className="text-green-700 bg-green-100 px-2 py-1 rounded">
-                                                ${cheapest.costPrice.toFixed(2)} ({cheapest.supplierName})
-                                            </span>
-                                        ) : '—'}
-                                    </td>
-                                    <td className="p-4">
-                                        {item.isFirstInCategory && cheapest ? (
-                                            <div className="text-indigo-700">
-                                                <span className="font-bold">{cheapest.supplierName}</span> offers the lowest price for {category}. Recommend prioritizing procurement.
-                                            </div>
-                                        ) : '—' }
-                                    </td>
+                                <tr key={item.id} className={`${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
+                                    <td className="p-4"><input type="checkbox" checked={isSelected} onChange={e => handleSelectProduct(item.id, e.target.checked)} className="h-4 w-4" /></td>
+                                    <td className="p-2">{editMode ? <input type="text" value={currentItem.name} onChange={e => handleEdit(item.id, 'name', e.target.value)} className="p-1 border rounded-md bg-white w-full"/> : item.name}</td>
+                                    <td className="p-2 text-gray-600">{editMode ? <input type="text" value={currentItem.supplierName} onChange={e => handleEdit(item.id, 'supplierName', e.target.value)} className="p-1 border rounded-md bg-white w-full"/> : item.supplierName}</td>
+                                    <td className="p-2 font-mono font-semibold">{editMode ? <input type="number" step="0.01" value={currentItem.costPrice} onChange={e => handleEdit(item.id, 'costPrice', e.target.value)} className="p-1 border rounded-md bg-white w-full"/> : `$${item.costPrice.toFixed(2)}`}</td>
+                                    <td className="p-2 text-gray-500">{editMode ? <input type="text" value={currentItem.unit} onChange={e => handleEdit(item.id, 'unit', e.target.value)} className="p-1 border rounded-md bg-white w-full"/> : item.unit}</td>
+                                    <td className="p-4 font-semibold">{item.isFirstInCategory && cheapest ? <span className="text-green-700 bg-green-100 px-2 py-1 rounded">${cheapest.costPrice.toFixed(2)} ({cheapest.supplierName})</span> : '—'}</td>
+                                    <td className="p-4">{item.isFirstInCategory && cheapest ? <div className="text-indigo-700"><span className="font-bold">{cheapest.supplierName}</span> offers the lowest price for {category}.</div> : '—' }</td>
                                 </tr>
                             );
                         })}
                          {filteredProducts.length === 0 && (
-                            <tr>
-                                <td colSpan={8} className="text-center p-8 text-gray-500">No products match the current filters.</td>
-                            </tr>
+                            <tr><td colSpan={8} className="text-center p-8 text-gray-500">No products match the current filters.</td></tr>
                         )}
                     </tbody>
                 </table>
@@ -457,10 +527,52 @@ const SupplierManagementView: React.FC = () => (
     </div>
 );
 
-const ProductPublishingView: React.FC<{ products: SourcedProduct[], onPublish: (productId: string, price: number, target: ('retail' | 'wholesale')[], quantity: number) => void }> = ({ products, onPublish }) => {
+const ProductPublishingView: React.FC<{ 
+    products: SourcedProduct[],
+    allProducts: SourcedProduct[],
+    onPublish: (productId: string, price: number, target: ('retail' | 'wholesale')[], quantity: number) => void,
+    isFiltered?: boolean,
+    onClearFilter?: () => void
+}> = ({ products, allProducts, onPublish, isFiltered, onClearFilter }) => {
     const [price, setPrice] = useState<Record<string, string>>({});
     const [quantity, setQuantity] = useState<Record<string, string>>({});
     const [target, setTarget] = useState<Record<string, ('retail' | 'wholesale')[]>>({});
+
+    const cheapestProductsMap = useMemo(() => {
+        const groups: { [key: string]: SourcedProduct[] } = {};
+        allProducts.forEach(p => {
+            const key = p.baseProductName || p.name;
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(p);
+        });
+
+        const cheapestMap = new Map<string, SourcedProduct>();
+        Object.values(groups).forEach(group => {
+            if (group.length > 0) {
+                const cheapest = group.reduce((min, p) => p.costPrice < min.costPrice ? p : min, group[0]);
+                cheapestMap.set(cheapest.baseProductName || cheapest.name, cheapest);
+            }
+        });
+        return cheapestMap;
+    }, [allProducts]);
+
+    const processedProducts = useMemo(() => {
+        const sorted = [...products].sort((a, b) => {
+            const nameA = a.baseProductName || a.name;
+            const nameB = b.baseProductName || b.name;
+            if (nameA < nameB) return -1;
+            if (nameA > nameB) return 1;
+            return a.costPrice - b.costPrice;
+        });
+
+        const seenCategories = new Set<string>();
+        return sorted.map(p => {
+            const category = p.baseProductName || p.name;
+            const isFirst = !seenCategories.has(category);
+            if (isFirst) seenCategories.add(category);
+            return { ...p, isFirstInCategory: isFirst };
+        });
+    }, [products]);
 
     const handlePublish = (id: string) => {
         const finalPrice = parseFloat(price[id] || '0');
@@ -486,67 +598,87 @@ const ProductPublishingView: React.FC<{ products: SourcedProduct[], onPublish: (
          <div>
             <h1 className="text-3xl font-bold mb-2 text-gray-800">Product Publishing</h1>
             <p className="text-gray-600 mb-6">Finalize pricing and publish curated products to your customer channels.</p>
+            {isFiltered && (
+                <div className="mb-4">
+                    <button onClick={onClearFilter} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 hover:underline">
+                        &larr; Show all unpublished products
+                    </button>
+                    <p className="text-xs text-gray-500 mt-1">Showing only products pushed from the curation view.</p>
+                </div>
+            )}
             <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
-                 <table className="w-full text-left">
-                    <thead>
-                        <tr className="border-b">
-                            <th className="p-4">Product</th>
-                            <th className="p-4">Supplier</th>
-                            <th className="p-4">Cost Price</th>
-                            <th className="p-4">Unit</th>
-                            <th className="p-4">Set Selling Price</th>
-                            <th className="p-4">Set Avail. Qty</th>
-                            <th className="p-4">Publish To</th>
-                            <th className="p-4">Actions</th>
+                 <table className="w-full text-left text-sm">
+                    <thead className="border-b bg-gray-50">
+                        <tr>
+                            <th className="p-4 font-semibold text-gray-600 uppercase tracking-wider">Product</th>
+                            <th className="p-4 font-semibold text-gray-600 uppercase tracking-wider">Supplier</th>
+                            <th className="p-4 font-semibold text-gray-600 uppercase tracking-wider">Cost Price</th>
+                            <th className="p-4 font-semibold text-gray-600 uppercase tracking-wider">Unit</th>
+                            <th className="p-4 font-semibold text-gray-600 uppercase tracking-wider">Normalized Price</th>
+                            <th className="p-4 font-semibold text-gray-600 uppercase tracking-wider">Cheapest Price Per Unit</th>
+                            <th className="p-4 font-semibold text-gray-600 uppercase tracking-wider flex items-center gap-2"><SparklesIcon className="w-5 h-5 text-indigo-500" /> AI Insight</th>
+                            <th className="p-4 font-semibold text-gray-600 uppercase tracking-wider">Set Selling Price</th>
+                            <th className="p-4 font-semibold text-gray-600 uppercase tracking-wider">Set Avail. Qty</th>
+                            <th className="p-4 font-semibold text-gray-600 uppercase tracking-wider">Publish To</th>
+                            <th className="p-4 font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {products.map(product => (
-                            <tr key={product.id} className="border-b hover:bg-gray-50 align-top">
-                                <td className="p-4 font-semibold">{product.name}</td>
-                                <td className="p-4">{product.supplierName}</td>
-                                <td className="p-4">${product.costPrice.toFixed(2)}</td>
-                                <td className="p-4">{product.unit}</td>
-                                <td className="p-4">
-                                    <input 
-                                        type="number" 
-                                        step="0.01" 
-                                        placeholder="e.g., 2.99"
-                                        className="p-2 border rounded-md w-28"
-                                        onChange={(e) => setPrice(p => ({...p, [product.id]: e.target.value}))}
-                                    />
-                                </td>
-                                <td className="p-4">
-                                    <input 
-                                        type="number" 
-                                        step="1" 
-                                        placeholder="e.g., 100"
-                                        className="p-2 border rounded-md w-28"
-                                        onChange={(e) => setQuantity(q => ({...q, [product.id]: e.target.value}))}
-                                    />
-                                </td>
-                                <td className="p-4">
-                                     <div className="flex flex-col text-sm gap-1">
-                                        <label><input type="checkbox" className="mr-1" onChange={e => {
-                                            const current = target[product.id] || [];
-                                            setTarget(t => ({...t, [product.id]: e.target.checked ? [...current, 'retail'] : current.filter(x => x !== 'retail') }))
-                                        }}/> Retail</label>
-                                         <label><input type="checkbox" className="mr-1" onChange={e => {
-                                            const current = target[product.id] || [];
-                                            setTarget(t => ({...t, [product.id]: e.target.checked ? [...current, 'wholesale'] : current.filter(x => x !== 'wholesale') }))
-                                        }}/> Wholesale</label>
-                                    </div>
-                                </td>
-                                <td className="p-4">
-                                    <button onClick={() => handlePublish(product.id)} className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700">
-                                        Publish
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
+                        {processedProducts.map(product => {
+                            const category = product.baseProductName || product.name;
+                            const cheapest = cheapestProductsMap.get(category);
+                            return (
+                                <tr key={product.id} className="border-b hover:bg-gray-50 align-top">
+                                    <td className="p-4 font-semibold">{product.name}</td>
+                                    <td className="p-4">{product.supplierName}</td>
+                                    <td className="p-4 font-mono">${product.costPrice.toFixed(2)}</td>
+                                    <td className="p-4">{product.unit}</td>
+                                    <td className="p-4">—</td>
+                                    <td className="p-4 font-semibold">{product.isFirstInCategory && cheapest ? <span className="text-green-700 bg-green-100 px-2 py-1 rounded">${cheapest.costPrice.toFixed(2)} ({cheapest.supplierName})</span> : '—'}</td>
+                                    <td className="p-4 text-indigo-700">{product.isFirstInCategory && cheapest ? `Best price for ${category}. Recommend prioritizing procurement.` : '—' }</td>
+                                    <td className="p-4">
+                                        <input 
+                                            type="number" 
+                                            step="0.01" 
+                                            placeholder="e.g., 2.99"
+                                            className="p-2 border rounded-md w-28"
+                                            onChange={(e) => setPrice(p => ({...p, [product.id]: e.target.value}))}
+                                        />
+                                    </td>
+                                    <td className="p-4">
+                                        <input 
+                                            type="number" 
+                                            step="1" 
+                                            placeholder="e.g., 100"
+                                            className="p-2 border rounded-md w-28"
+                                            onChange={(e) => setQuantity(q => ({...q, [product.id]: e.target.value}))}
+                                        />
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="flex flex-col text-sm gap-1">
+                                            <label><input type="checkbox" className="mr-1" onChange={e => {
+                                                const current = target[product.id] || [];
+                                                setTarget(t => ({...t, [product.id]: e.target.checked ? [...current, 'retail'] : current.filter(x => x !== 'retail') }))
+                                            }}/> Retail</label>
+                                            <label><input type="checkbox" className="mr-1" onChange={e => {
+                                                const current = target[product.id] || [];
+                                                setTarget(t => ({...t, [product.id]: e.target.checked ? [...current, 'wholesale'] : current.filter(x => x !== 'wholesale') }))
+                                            }}/> Wholesale</label>
+                                        </div>
+                                    </td>
+                                    <td className="p-4">
+                                        <button onClick={() => handlePublish(product.id)} className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700">
+                                            Publish
+                                        </button>
+                                    </td>
+                                </tr>
+                            )
+                        })}
                     </tbody>
                 </table>
-                {products.length === 0 && <p className="text-center p-8 text-gray-500">All curated products have been published.</p>}
+                {products.length === 0 && <p className="text-center p-8 text-gray-500">
+                    {isFiltered ? "The selected products have been published." : "All curated products have been published."}
+                </p>}
             </div>
             <AiInsight title="Optimal Stocking Levels" content="Based on demand forecasts, we recommend publishing at least 50 bunches of Organic Carrots and 30 lbs of Heirloom Tomatoes for the upcoming delivery cycle." />
         </div>
