@@ -130,7 +130,7 @@ const DashboardView: React.FC<{ farmer: Farmer }> = ({ farmer }) => (
 
 const ProductManagementView: React.FC = () => {
     const [products, setProducts] = useState<Product[]>(mockFarmerProducts);
-    const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+    const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [filters, setFilters] = useState({
         name: '',
         category: 'all',
@@ -145,7 +145,7 @@ const ProductManagementView: React.FC = () => {
     
     const handleImport = () => {
         setProducts(mockImportedFarmerProducts);
-        setLastUpdated(new Date().toLocaleString());
+        setLastUpdated(new Date());
         alert('Products imported successfully! The current product list has been replaced.');
     };
 
@@ -245,12 +245,16 @@ const ProductManagementView: React.FC = () => {
                          {statuses.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                 </div>
-                {lastUpdated && <p className="text-xs text-gray-500 mt-4">Last data imported: {lastUpdated}</p>}
             </div>
 
-            <div className="flex justify-start items-center mb-4 gap-2">
-                <button onClick={handleExportCsv} className="bg-gray-700 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-800 flex items-center gap-2 text-sm"><FileDownloadIcon className="w-4 h-4" />Export to CSV</button>
-                <button onClick={handlePrint} className="bg-gray-700 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-800 flex items-center gap-2 text-sm"><PrinterIcon className="w-4 h-4" />Print Table</button>
+            <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2">
+                    <button onClick={handleExportCsv} className="bg-gray-700 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-800 flex items-center gap-2 text-sm"><FileDownloadIcon className="w-4 h-4" />Export to CSV</button>
+                    <button onClick={handlePrint} className="bg-gray-700 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-800 flex items-center gap-2 text-sm"><PrinterIcon className="w-4 h-4" />Print Table</button>
+                </div>
+                <p className="text-sm text-gray-600">
+                    Last Updated: {lastUpdated ? lastUpdated.toLocaleString() : 'Not updated in this session'}
+                </p>
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">

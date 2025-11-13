@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Business, Product, StaffMember, Supplier, Customer, Order } from '../types';
+import { mockBusinessProducts } from '../mock/data';
 import { 
     LogoutIcon, UsersIcon, ChartBarIcon, BoxIcon, ClipboardListIcon, 
-    CurrencyDollarIcon, UsersGroupIcon, BuildingStorefrontIcon, ReceiptPercentIcon 
+    CurrencyDollarIcon, UsersGroupIcon, BuildingStorefrontIcon, ReceiptPercentIcon,
+    UploadIcon, FileDownloadIcon, PrinterIcon
 } from './Icons';
 
 type BusinessViewType = 
@@ -22,7 +24,7 @@ const BusinessView: React.FC<BusinessViewProps> = ({ business, onLogout }) => {
         case 'DASHBOARD':
             return <DashboardView business={business} />;
         case 'PRODUCTS':
-            return <ProductManagementView products={business.products || []} />;
+            return <ProductManagementView initialProducts={business.products || []} />;
         case 'SUPPLIERS':
             return <SupplierManagementView suppliers={business.suppliers || []} />;
         case 'CUSTOMERS':
@@ -101,19 +103,110 @@ const DashboardView: React.FC<{ business: Business }> = ({ business }) => (
     </div>
 );
 
-const ProductManagementView: React.FC<{ products: Product[] }> = ({ products }) => (
-    <div>
-        <h1 className="text-3xl font-bold mb-6 text-gray-800">My Products / Menu</h1>
-        <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
-            <table className="w-full text-left">
-                <thead><tr className="border-b"><th className="p-4">Name</th><th className="p-4">Price</th><th className="p-4">Unit</th></tr></thead>
-                <tbody>
-                    {products.map(p => (<tr key={p.id} className="border-b hover:bg-gray-50"><td className="p-4">{p.name}</td><td className="p-4">${p.price.toFixed(2)}</td><td className="p-4">{p.unit}</td></tr>))}
-                </tbody>
-            </table>
+const ProductManagementView: React.FC<{ initialProducts: Product[] }> = ({ initialProducts }) => {
+    const [products, setProducts] = useState<Product[]>(initialProducts);
+    const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+    const [filters, setFilters] = useState({ name: '', status: 'all' });
+
+    const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        setFilters(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleImport = () => {
+        // In a real app, this would come from a file upload
+        const imported = [...mockBusinessProducts].reverse(); // Simulate different data
+        setProducts(imported);
+        setLastUpdated(new Date());
+        alert('Menu/Products imported successfully!');
+    };
+
+    const filteredProducts = useMemo(() => {
+        return products.filter(p => {
+            const nameMatch = p.name.toLowerCase().includes(filters.name.toLowerCase());
+            const statusMatch = filters.status === 'all' || (p.isSeasonal ? 'Seasonal' : 'Year-Round') === filters.status;
+            return nameMatch && statusMatch;
+        });
+    }, [products, filters]);
+
+    const handleExportCsv = () => {
+        const headers = ['Name', 'Price', 'Unit', 'MOQ', 'Seasonal'];
+        const rows = filteredProducts.map(p => [
+            `"${p.name.replace(/"/g, '""')}"`, p.price, p.unit, p.moq || 'N/A', p.isSeasonal ? 'Yes' : 'No'
+        ]);
+        let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "business_products.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handlePrint = () => {
+        const printWindow = window.open('', '', 'height=800,width=1000');
+        if (printWindow) {
+            printWindow.document.write('<html><head><title>Product / Menu List</title><style>body{font-family:sans-serif;padding:20px} table{width:100%;border-collapse:collapse;margin-top:20px} th,td{border:1px solid #ddd;padding:8px;text-align:left} th{background-color:#f2f2f2} h1{color:#333}</style></head><body>');
+            printWindow.document.write('<h1>Product / Menu List</h1>');
+            const table = document.getElementById('product-table-business');
+            if (table) printWindow.document.write(table.outerHTML);
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+        }
+    };
+
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-6">
+                 <h1 className="text-3xl font-bold text-gray-800">My Products / Menu</h1>
+                 <button className="bg-blue-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-600">Add New Item</button>
+            </div>
+             <div className="bg-white p-6 rounded-lg shadow-md mb-8">
+                 <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">Import from File</h3>
+                 <div className="flex items-center gap-4">
+                    <input type="file" className="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                    <button onClick={handleImport} className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-indigo-700 flex items-center gap-2">
+                        <UploadIcon className="w-5 h-5" /> Import Items
+                    </button>
+                 </div>
+            </div>
+            <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+                <h3 className="text-lg font-semibold text-gray-700 mb-4">Filters</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <input type="text" name="name" placeholder="Item name..." value={filters.name} onChange={handleFilterChange} className="p-2 border rounded-md" />
+                    <select name="status" value={filters.status} onChange={handleFilterChange} className="p-2 border rounded-md bg-white">
+                        <option value="all">All Items</option>
+                        <option value="Seasonal">Seasonal</option>
+                        <option value="Year-Round">Year-Round</option>
+                    </select>
+                </div>
+            </div>
+
+            <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2">
+                    <button onClick={handleExportCsv} className="bg-gray-700 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-800 flex items-center gap-2 text-sm"><FileDownloadIcon className="w-4 h-4" />Export to CSV</button>
+                    <button onClick={handlePrint} className="bg-gray-700 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-800 flex items-center gap-2 text-sm"><PrinterIcon className="w-4 h-4" />Print List</button>
+                </div>
+                <p className="text-sm text-gray-600">
+                    Last Updated: {lastUpdated ? lastUpdated.toLocaleString() : 'Not updated in this session'}
+                </p>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
+                <table className="w-full text-left" id="product-table-business">
+                    <thead><tr className="border-b"><th className="p-4">Name</th><th className="p-4">Price</th><th className="p-4">Unit</th><th className="p-4">MOQ</th><th className="p-4">Seasonal</th></tr></thead>
+                    <tbody>
+                        {filteredProducts.map(p => (<tr key={p.id} className="border-b hover:bg-gray-50"><td className="p-4">{p.name}</td><td className="p-4">${p.price.toFixed(2)}</td><td className="p-4">{p.unit}</td><td className="p-4">{p.moq || 'N/A'}</td><td className="p-4">{p.isSeasonal ? 'Yes' : 'No'}</td></tr>))}
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
-);
+    );
+};
+
 
 const PurchaseManagementView: React.FC<{ purchases: Order[] }> = ({ purchases }) => (
     <div>

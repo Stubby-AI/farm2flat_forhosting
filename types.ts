@@ -159,3 +159,60 @@ export interface Business {
   purchaseHistory?: Order[]; // Purchases from FrescoHub
   products?: Product[]; // Their own products, e.g., menu items
 }
+
+// === Super Admin Portal Types ===
+
+export interface Driver {
+  id: string;
+  name: string;
+  vehicleId: string;
+  contact: string;
+  status: 'On Duty' | 'Off Duty' | 'On Break';
+}
+
+export interface Vehicle {
+  id: string;
+  licensePlate: string;
+  model: string;
+  capacity: number; // in kg
+  status: 'Active' | 'Maintenance' | 'Inactive';
+}
+
+export interface Route {
+  id:string;
+  driverId: string;
+  hubId: string;
+  orders: string[]; // order ids
+  status: 'Planned' | 'In Progress' | 'Completed' | 'Delayed';
+  estimatedCompletion: string;
+}
+
+export interface SeasonalTrend {
+  productId: string;
+  productName: string;
+  months: number[]; // 0-11 for Jan-Dec
+  trend: 'High Supply' | 'Peak Season' | 'Low Supply' | 'Off-Season';
+}
+
+export interface Campaign {
+  id: string;
+  name: string;
+  targetSegment: 'All Users' | 'New Users' | 'High-Value Customers';
+  channel: 'Email' | 'SMS' | 'Push Notification';
+  status: 'Draft' | 'Active' | 'Completed';
+  sentDate?: string;
+  engagementRate?: number; // as percentage
+}
+
+export interface Ticket {
+  id: string;
+  userId: string;
+  userName: string;
+  userRole: PortalUserRole | 'user';
+  subject: string;
+  description: string;
+  status: 'Open' | 'In Progress' | 'Resolved' | 'Closed';
+  priority: 'Low' | 'Medium' | 'High' | 'Urgent';
+  createdDate: string;
+  assignedTo?: string; // admin user id
+}

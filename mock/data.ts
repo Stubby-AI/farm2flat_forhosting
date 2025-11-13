@@ -1,4 +1,4 @@
-import { Product, SubscriptionBox, SubscriptionSize, Order, User, Farmer, Hub, CartItem, PortalUser, StaffMember, Supplier, Customer, PurchaseOrder, Business } from '../types';
+import { Product, SubscriptionBox, SubscriptionSize, Order, User, Farmer, Hub, CartItem, PortalUser, StaffMember, Supplier, Customer, PurchaseOrder, Business, Driver, Vehicle, Route, SeasonalTrend, Campaign, Ticket } from '../types';
 
 export const mockProducts: Product[] = [
   { id: 'p1', name: 'Organic Carrots', price: 2.50, unit: 'bunch', imageUrl: 'https://picsum.photos/id/1080/400/300', farmer: 'Green Acres Farm' },
@@ -181,8 +181,9 @@ export const mockFarmers: Farmer[] = [
 ];
 
 export const mockBusinessProducts: Product[] = [
-    { id: 'bp1', name: 'Garden Salad', price: 12.50, unit: 'plate', imageUrl: 'https://picsum.photos/id/203/400/300', farmer: 'The Grand Restaurant' },
-    { id: 'bp2', name: 'Tomato Soup', price: 8.00, unit: 'bowl', imageUrl: 'https://picsum.photos/id/204/400/300', farmer: 'The Grand Restaurant' },
+    { id: 'bp1', name: 'Garden Salad', price: 12.50, unit: 'plate', imageUrl: 'https://picsum.photos/id/203/400/300', farmer: 'The Grand Restaurant', moq: 1, isSeasonal: true },
+    { id: 'bp2', name: 'Tomato Soup', price: 8.00, unit: 'bowl', imageUrl: 'https://picsum.photos/id/204/400/300', farmer: 'The Grand Restaurant', moq: 1, isSeasonal: true },
+    { id: 'bp3', name: 'Roast Chicken', price: 24.00, unit: 'plate', imageUrl: 'https://picsum.photos/id/205/400/300', farmer: 'The Grand Restaurant', moq: 1, isSeasonal: false },
 ];
 
 export const mockBusinesses: Business[] = [
@@ -227,3 +228,41 @@ export const mockHubFarmerMap: Record<string, string[]> = {
     'h2': ['f3'],
     'h3': ['f1', 'f4'],
 };
+
+// --- Super Admin Mock Data ---
+export const mockDrivers: Driver[] = [
+    { id: 'd1', name: 'Carlos Ray', vehicleId: 'v1', contact: '555-0101', status: 'On Duty' },
+    { id: 'd2', name: 'Susan Ivanova', vehicleId: 'v2', contact: '555-0102', status: 'Off Duty' },
+    { id: 'd3', name: 'Michael Garibaldi', vehicleId: 'v3', contact: '555-0103', status: 'On Duty' },
+];
+
+export const mockVehicles: Vehicle[] = [
+    { id: 'v1', licensePlate: 'FRESH-1', model: 'Refrigerated Van', capacity: 500, status: 'Active' },
+    { id: 'v2', licensePlate: 'FARM-2-U', model: 'Cargo Van', capacity: 300, status: 'Active' },
+    { id: 'v3', licensePlate: 'DELIVER-3', model: 'Refrigerated Van', capacity: 500, status: 'Maintenance' },
+];
+
+export const mockRoutes: Route[] = [
+    { id: 'r1', driverId: 'd1', hubId: 'h1', orders: ['o1', 'o3'], status: 'In Progress', estimatedCompletion: '2024-07-28 14:00' },
+    { id: 'r2', driverId: 'd3', hubId: 'h2', orders: ['o2'], status: 'Planned', estimatedCompletion: '2024-07-28 16:00' },
+];
+
+export const mockSeasonalTrends: SeasonalTrend[] = [
+    { productId: 'p2', productName: 'Heirloom Tomatoes', months: [5, 6, 7, 8], trend: 'Peak Season' },
+    { productId: 'p5', productName: 'Gala Apples', months: [8, 9, 10], trend: 'Peak Season' },
+    { productId: 'imp2', productName: 'Strawberries', months: [5, 6], trend: 'High Supply' },
+    { productId: 'p7', productName: 'Potatoes', months: [0,1,2,3,4,5,6,7,8,9,10,11], trend: 'High Supply' },
+    { productId: 'imp3', productName: 'Asparagus', months: [3, 4, 5], trend: 'Low Supply' },
+];
+
+export const mockCampaigns: Campaign[] = [
+    { id: 'c1', name: 'Summer Fruit Festival', targetSegment: 'All Users', channel: 'Email', status: 'Completed', sentDate: '2024-06-15', engagementRate: 22.5 },
+    { id: 'c2', name: 'Welcome Offer - 10% Off', targetSegment: 'New Users', channel: 'Push Notification', status: 'Active' },
+    { id: 'c3', name: 'Weekly Veggie Box Promo', targetSegment: 'High-Value Customers', channel: 'SMS', status: 'Draft' },
+];
+
+export const mockTickets: Ticket[] = [
+    { id: 't1', userId: 'u1', userName: 'Jane Doe', userRole: 'user', subject: 'Late Delivery', description: 'My order o3 was supposed to arrive yesterday but I have not received it yet.', status: 'Open', priority: 'High', createdDate: '2023-11-03', assignedTo: 'admin1' },
+    { id: 't2', userId: 'farmer1', userName: 'John Farmer', userRole: 'farmer', subject: 'Payment not received for Q3', description: 'The quarterly payment for our produce has not been reflected in our account.', status: 'In Progress', priority: 'Urgent', createdDate: '2023-10-30', assignedTo: 'admin1' },
+    { id: 't3', userId: 'biz1', userName: 'The Grand Restaurant', userRole: 'business', subject: 'Incorrect produce in order o2', description: 'We received spinach instead of kale in our last order.', status: 'Resolved', priority: 'Medium', createdDate: '2023-10-30' },
+];
