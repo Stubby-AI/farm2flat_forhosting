@@ -1,4 +1,3 @@
-
 export interface Product {
   id: string;
   name: string;
@@ -8,9 +7,19 @@ export interface Product {
   farmer: string;
 }
 
-export interface CartItem extends Product {
+export interface CartItem {
+  cartId: string; // Unique ID for the item in the cart
+  id: string; // Product or Subscription ID
+  name: string;
+  price: number;
+  imageUrl: string;
   quantity: number;
+  type: 'product' | 'subscription';
+  unit?: string;
+  frequency?: SubscriptionFrequency;
+  isTrial?: boolean;
 }
+
 
 export enum SubscriptionSize {
   Small = "Small (1 person)",
@@ -33,6 +42,7 @@ export interface SubscriptionBox {
   price: number;
   description: string;
   contentsSample: string[];
+  imageUrl: string;
 }
 
 export interface User {

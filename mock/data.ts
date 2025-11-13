@@ -1,5 +1,5 @@
 
-import { Product, SubscriptionBox, SubscriptionSize, Order, User } from '../types';
+import { Product, SubscriptionBox, SubscriptionSize, Order, User, Farmer, Hub, CartItem } from '../types';
 
 export const mockProducts: Product[] = [
   { id: 'p1', name: 'Organic Carrots', price: 2.50, unit: 'bunch', imageUrl: 'https://picsum.photos/id/1080/400/300', farmer: 'Green Acres Farm' },
@@ -21,6 +21,7 @@ export const mockSubscriptionBoxes: SubscriptionBox[] = [
         price: 25.00,
         description: 'A weekly selection of essential vegetables for one person.',
         contentsSample: ['Carrots', 'Potatoes', 'Onions', 'Broccoli', 'Lettuce'],
+        imageUrl: 'https://picsum.photos/id/102/400/300',
     },
     {
         id: 'sb2',
@@ -30,6 +31,7 @@ export const mockSubscriptionBoxes: SubscriptionBox[] = [
         price: 40.00,
         description: 'Perfect for couples or small families, a variety of fresh veggies.',
         contentsSample: ['Carrots', 'Potatoes', 'Onions', 'Broccoli', 'Lettuce', 'Tomatoes', 'Peppers'],
+        imageUrl: 'https://picsum.photos/id/103/400/300',
     },
     {
         id: 'sb3',
@@ -39,6 +41,7 @@ export const mockSubscriptionBoxes: SubscriptionBox[] = [
         price: 35.00,
         description: 'A delicious assortment of seasonal fruits for 2-3 people.',
         contentsSample: ['Apples', 'Bananas', 'Oranges', 'Berries', 'Grapes'],
+        imageUrl: 'https://picsum.photos/id/104/400/300',
     },
     {
         id: 'sb4',
@@ -48,15 +51,19 @@ export const mockSubscriptionBoxes: SubscriptionBox[] = [
         price: 45.00,
         description: 'A mix of fruits and veggies common in Asian cuisine.',
         contentsSample: ['Bok Choy', 'Daikon Radish', 'Ginger', 'Napa Cabbage', 'Apples', 'Pears'],
+        imageUrl: 'https://picsum.photos/id/105/400/300',
     },
 ];
 
-const MOCK_ORDER_ITEMS = mockProducts.slice(0, 3).map((p, i) => ({ ...p, quantity: i + 1 }));
+// FIX: Added cartId to mock order items to match the CartItem type.
+const MOCK_ORDER_ITEMS: CartItem[] = mockProducts.slice(0, 3).map((p, i) => ({ ...p, quantity: i + 1, type: 'product', cartId: `mock-cart-${p.id}-${i}` }));
 
 export const mockOrders: Order[] = [
   { id: 'o1', userId: 'u1', date: '2023-10-26', items: MOCK_ORDER_ITEMS, total: MOCK_ORDER_ITEMS.reduce((sum, item) => sum + item.price * item.quantity, 0), status: 'Delivered' },
-  { id: 'o2', userId: 'u2', date: '2023-10-29', items: mockProducts.slice(2, 4).map(p => ({ ...p, quantity: 1 })), total: 4.50, status: 'Processing' },
-  { id: 'o3', userId: 'u1', date: '2023-11-02', items: mockProducts.slice(4, 7).map(p => ({ ...p, quantity: 2 })), total: 12.50, status: 'Pending' },
+  // FIX: Added cartId to mock order items to match the CartItem type.
+  { id: 'o2', userId: 'u2', date: '2023-10-29', items: mockProducts.slice(2, 4).map((p,i) => ({ ...p, quantity: 1, type: 'product', cartId: `mock-cart-${p.id}-${i+3}` })), total: 4.50, status: 'Processing' },
+  // FIX: Added cartId to mock order items to match the CartItem type.
+  { id: 'o3', userId: 'u1', date: '2023-11-02', items: mockProducts.slice(4, 7).map((p,i) => ({ ...p, quantity: 2, type: 'product', cartId: `mock-cart-${p.id}-${i+5}` })), total: 12.50, status: 'Pending' },
 ];
 
 export const mockUser: User = {
@@ -65,4 +72,23 @@ export const mockUser: User = {
     email: 'jane.doe@example.com',
     postalCode: 'M5V 2T6',
     orderHistory: mockOrders.filter(o => o.userId === 'u1'),
+};
+
+export const mockFarmers: Farmer[] = [
+    { id: 'f1', name: 'Green Acres Farm', location: 'Guelph, ON', specialty: ['Vegetables', 'Root Crops'] },
+    { id: 'f2', name: 'Sunnyvale Orchards', location: 'Niagara, ON', specialty: ['Fruits', 'Apples', 'Tomatoes'] },
+    { id: 'f3', name: 'Riverbend Gardens', location: 'Ottawa, ON', specialty: ['Leafy Greens', 'Herbs'] },
+    { id: 'f4', name: 'Prairie Harvest', location: 'Brant, ON', specialty: ['Grains', 'Potatoes'] },
+];
+
+export const mockHubs: Hub[] = [
+    { id: 'h1', postalCodePrefix: 'M', location: 'Toronto Downtown Core' },
+    { id: 'h2', postalCodePrefix: 'K', location: 'Ottawa Region' },
+    { id: 'h3', postalCodePrefix: 'L', location: 'Greater Toronto Area' },
+];
+
+export const mockHubFarmerMap: Record<string, string[]> = {
+    'h1': ['f1', 'f2'],
+    'h2': ['f3'],
+    'h3': ['f1', 'f4'],
 };
