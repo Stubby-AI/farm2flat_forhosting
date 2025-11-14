@@ -52,7 +52,7 @@ const Header: React.FC<{
             <div className="container mx-auto px-6 py-3 flex justify-between items-center">
                 <div onClick={() => onNavigate('SHOP')} className="flex items-center cursor-pointer">
                     <LeafIcon className="h-8 w-8 text-green-600" />
-                    <h1 className="text-2xl font-bold text-gray-800 ml-2">FrescoHub</h1>
+                    <h1 className="text-2xl font-bold text-gray-800 ml-2">Farm2Flat</h1>
                 </div>
                 <div className="flex items-center gap-4">
                      <form onSubmit={handlePostalCodeSubmit} className="hidden md:flex items-center border rounded-lg overflow-hidden">
@@ -374,7 +374,7 @@ const PaymentGatewayView: React.FC<{ onPaymentSuccess: () => void }> = ({ onPaym
              <h2 className="text-2xl font-bold text-gray-800 mb-4">Confirm Payment</h2>
              <p className="text-gray-600 mb-6">You are being redirected to our secure payment provider to complete your purchase.</p>
              <div className="bg-gray-50 p-4 rounded-md border text-left mb-6">
-                <p><strong>Merchant:</strong> FrescoHub</p>
+                <p><strong>Merchant:</strong> Farm2Flat</p>
                 <p><strong>Amount:</strong> $--.-- (dynamic amount)</p>
              </div>
              <button onClick={onPaymentSuccess} className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition w-full">
@@ -749,7 +749,7 @@ const RecipeDetailModal: React.FC<{
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <h4 className="text-lg font-semibold mb-2">Ingredients</h4>
-                            <h5 className="font-bold text-sm text-green-700 mt-4 mb-2">From FrescoHub</h5>
+                            <h5 className="font-bold text-sm text-green-700 mt-4 mb-2">From Farm2Flat</h5>
                             <ul className="space-y-2">
                                 {storeIngredients.map((ing, i) => (
                                     <li key={i} className="flex items-center">
@@ -1046,7 +1046,7 @@ const UserView: React.FC = () => {
                 />
             )}
             <footer className="bg-gray-200 text-center p-4 mt-8">
-                <p>&copy; 2024 FrescoHub. All rights reserved.</p>
+                <p>&copy; 2024 Farm2Flat. All rights reserved.</p>
             </footer>
         </div>
     );

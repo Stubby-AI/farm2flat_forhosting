@@ -355,18 +355,18 @@ const OrderFulfillmentView: React.FC<{ farmer: Farmer }> = ({ farmer }) => {
 };
 
 const Farm2FlatView: React.FC<{ farmer: Farmer }> = ({ farmer }) => {
-    // These are orders from FrescoHub to the farmer. For now, we simulate this.
+    // These are orders from Farm2Flat to the farmer. For now, we simulate this.
     // We can filter `mockOrders` where a farmer's product is present, and maybe the customer is a business.
-    const frescoHubOrders = mockOrders.filter(order => 
+    const farm2FlatOrders = mockOrders.filter(order => 
         order.userId.startsWith('b') && order.items.some(item => farmer.productIds?.includes(item.id))
     );
 
     return (
         <div>
             <h1 className="text-3xl font-bold mb-2 text-gray-800">Farm2Flat Orders</h1>
-            <p className="text-gray-600 mb-6">These are your orders to fulfill for the FrescoHub platform.</p>
+            <p className="text-gray-600 mb-6">These are your orders to fulfill for the Farm2Flat platform.</p>
              <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
-                {frescoHubOrders.length > 0 ? (
+                {farm2FlatOrders.length > 0 ? (
                     <table className="w-full text-left">
                         <thead>
                             <tr className="border-b">
@@ -377,7 +377,7 @@ const Farm2FlatView: React.FC<{ farmer: Farmer }> = ({ farmer }) => {
                             </tr>
                         </thead>
                         <tbody>
-                            {frescoHubOrders.map(order => (
+                            {farm2FlatOrders.map(order => (
                                 <tr key={order.id} className="border-b hover:bg-gray-50">
                                     <td className="p-4">{order.id}</td>
                                     <td className="p-4">{order.date}</td>
@@ -394,7 +394,7 @@ const Farm2FlatView: React.FC<{ farmer: Farmer }> = ({ farmer }) => {
                             ))}
                         </tbody>
                     </table>
-                ) : <p>No active orders from FrescoHub at the moment.</p>}
+                ) : <p>No active orders from Farm2Flat at the moment.</p>}
             </div>
         </div>
     );

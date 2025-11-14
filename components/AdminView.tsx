@@ -93,7 +93,7 @@ const AdminView: React.FC<AdminViewProps> = ({ onLogout }) => {
   return (
     <div className="flex min-h-screen bg-gray-100 font-sans">
       <aside className="w-64 bg-gray-800 text-white p-4 flex flex-col">
-        <h2 className="text-2xl font-bold mb-6">FrescoHub Admin</h2>
+        <h2 className="text-2xl font-bold mb-6">Farm2Flat Admin</h2>
         
         <p className="text-xs text-gray-400 uppercase tracking-wider px-2 mb-2">Sourcing & Publishing</p>
         <nav>

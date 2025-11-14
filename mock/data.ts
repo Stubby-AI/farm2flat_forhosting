@@ -181,7 +181,7 @@ export const mockUser: User = {
 export const mockPortalUsers: PortalUser[] = [
   {
     id: 'admin1',
-    email: 'admin@frescohub.com',
+    email: 'admin@farm2flat.com',
     password: 'adminpassword',
     name: 'Super Admin',
     role: 'admin',
@@ -233,7 +233,7 @@ export const mockFarmerDirectOrders: Order[] = [
 export const mockFarmerCustomers: Customer[] = [
     { id: 'cust1', name: 'The Corner Cafe', type: 'Restaurant', contactEmail: 'orders@cornercafe.com', orderHistory: mockFarmerDirectOrders },
     { id: 'cust2', name: 'Local Roots Grocer', type: 'Grocer', contactEmail: 'buyer@localroots.com' },
-    { id: 'cust3', name: 'FrescoHub', type: 'Platform', contactEmail: 'procurement@frescohub.com' },
+    { id: 'cust3', name: 'Farm2Flat', type: 'Platform', contactEmail: 'procurement@farm2flat.com' },
 ];
 
 export const mockFarmerPurchases: PurchaseOrder[] = [
@@ -319,7 +319,7 @@ export const mockBusinesses: Business[] = [
         location: 'Toronto, ON',
         contactEmail: 'buyer@restaurant.com',
         staff: [{ id: 'bs1', name: 'Chef Antoine', role: 'Head Chef', contact: 'chef@restaurant.com' }],
-        suppliers: [{id: 'fhub', name: 'FrescoHub', category: 'Fresh Produce', contactEmail: 'sales@frescohub.com'}],
+        suppliers: [{id: 'fhub', name: 'Farm2Flat', category: 'Fresh Produce', contactEmail: 'sales@farm2flat.com'}],
         customers: mockBusinessCustomers,
         purchaseHistory: mockOrders.filter(o => o.userId === 'b1'),
         products: mockBusinessProducts,

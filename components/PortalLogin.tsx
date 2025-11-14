@@ -45,7 +45,7 @@ const PortalLogin: React.FC<PortalLoginProps> = ({ onLoginSuccess }) => {
             <div className="w-full max-w-4xl mx-auto px-6 py-12 grid grid-cols-1 md:grid-cols-2 gap-0">
                 <div className="bg-green-600 text-white p-12 flex flex-col justify-center items-center text-center rounded-l-lg">
                     <LeafIcon className="w-20 h-20 text-white" />
-                    <h1 className="text-4xl font-bold mt-4">FrescoHub</h1>
+                    <h1 className="text-4xl font-bold mt-4">Farm2Flat</h1>
                     <p className="mt-2 opacity-90">Connecting local farms to your business.</p>
                 </div>
                 <div className="bg-white p-12 rounded-r-lg shadow-2xl">

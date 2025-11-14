@@ -117,7 +117,7 @@ const DashboardView: React.FC<{ business: Business }> = ({ business }) => (
                 <p className="text-4xl font-bold text-orange-500">5</p>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-md">
-                <h3 className="text-lg font-semibold text-gray-600">Monthly Spend (on FrescoHub)</h3>
+                <h3 className="text-lg font-semibold text-gray-600">Monthly Spend (on Farm2Flat)</h3>
                 <p className="text-4xl font-bold text-blue-600">$890.00</p>
             </div>
         </div>
@@ -230,7 +230,7 @@ const ProductManagementView: React.FC<{ products: Product[], setProducts: React.
 
 const PurchaseManagementView: React.FC<{ purchases: Order[] }> = ({ purchases }) => (
     <div>
-        <h1 className="text-3xl font-bold mb-6 text-gray-800">My Purchase History (from FrescoHub)</h1>
+        <h1 className="text-3xl font-bold mb-6 text-gray-800">My Purchase History (from Farm2Flat)</h1>
         <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
             <table className="w-full text-left">
                 <thead><tr className="border-b"><th className="p-4">Order ID</th><th className="p-4">Date</th><th className="p-4">Total</th><th className="p-4">Status</th></tr></thead>
@@ -254,7 +254,7 @@ const Farm2FlatSourcingView: React.FC<{ onDuplicateProduct: (product: SourcedPro
     return (
         <div>
              <h1 className="text-3xl font-bold mb-2 text-gray-800">Farm2Flat Sourcing Hub</h1>
-             <p className="text-gray-600 mb-6">Source products directly from the FrescoHub wholesale catalog. You can add items to your own menu with one click.</p>
+             <p className="text-gray-600 mb-6">Source products directly from the Farm2Flat wholesale catalog. You can add items to your own menu with one click.</p>
              <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
                 <table className="w-full text-left">
                     <thead>
