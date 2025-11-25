@@ -1,11 +1,10 @@
 
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useCart } from '../hooks/useCart';
 import { mockProducts, mockSubscriptionBoxes, mockUser, mockOrders, mockSourcedProducts } from '../mock/data';
 import { Product, SubscriptionBox, SubscriptionFrequency, User, CartItem, Order, AISuggestion, Recipe } from '../types';
 import { getPersonalizedSuggestions, generateRecipes } from '../services/geminiService';
-import { ShoppingCartIcon, LeafIcon, UserIcon, TrashIcon, PlusIcon, MinusIcon, ArrowRightIcon, MapPinIcon, HeartIcon, CogIcon, BookOpenIcon } from './Icons';
+import { ShoppingCartIcon, LeafIcon, UserIcon, TrashIcon, PlusIcon, MinusIcon, ArrowRightIcon, MapPinIcon, HeartIcon, CogIcon, BookOpenIcon, HomeModernIcon } from './Icons';
 
 type UserViewType = 'SHOP' | 'SUBSCRIPTIONS' | 'CART' | 'PROFILE' | 'AUTH' | 'CHECKOUT' | 'GATEWAY' | 'CONFIRMATION';
 type OrderWindow = 'Wednesday' | 'Sunday';
@@ -74,11 +73,12 @@ const Header: React.FC<{
                         <button onClick={() => onNavigate('SUBSCRIPTIONS')} className="text-gray-600 hover:text-green-600">Subscriptions</button>
                         {isAuthenticated ? (
                             <div className="relative group">
-                                <button onClick={() => onNavigate('PROFILE')} className="text-gray-600 hover:text-green-600">
+                                <button onClick={() => onNavigate('PROFILE')} className="text-gray-600 hover:text-green-600 flex items-center gap-1">
                                     <UserIcon className="h-6 w-6" />
+                                    <span className="hidden sm:inline text-sm">Dashboard</span>
                                 </button>
                                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 invisible group-hover:visible">
-                                     <button onClick={() => onNavigate('PROFILE')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">My Profile</button>
+                                     <button onClick={() => onNavigate('PROFILE')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">My Dashboard</button>
                                      <button onClick={onSignOut} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">Sign Out</button>
                                 </div>
                             </div>
@@ -146,24 +146,31 @@ const CountdownTimer: React.FC<{
     );
 };
 
-const ProductCard: React.FC<{ product: Product; onAddToCart: (product: Product) => void; isRegular: boolean; onToggleRegular: (productId: string) => void; }> = ({ product, onAddToCart, isRegular, onToggleRegular }) => (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-transform duration-300 group">
+const ProductCard: React.FC<{ product: Product; onAddToCart: (product: Product) => void; isRegular: boolean; onToggleRegular: (productId: string) => void; available: boolean }> = ({ product, onAddToCart, isRegular, onToggleRegular, available }) => (
+    <div className={`bg-white rounded-lg shadow-md overflow-hidden transform transition-transform duration-300 group ${!available ? 'opacity-60 pointer-events-none grayscale' : 'hover:scale-105'}`}>
         <div className="relative">
             <img src={product.imageUrl} alt={product.name} className="w-full h-48 object-cover" />
-            <button 
-                onClick={() => onToggleRegular(product.id)}
-                className={`absolute top-2 right-2 p-2 rounded-full transition-all ${isRegular ? 'bg-red-500 text-white' : 'bg-white/70 text-gray-700 hover:bg-white'}`}
-                aria-label={isRegular ? 'Remove from regulars' : 'Add to regulars'}
-            >
-                <HeartIcon className="w-5 h-5" filled={isRegular} />
-            </button>
+             {available && (
+                <button 
+                    onClick={() => onToggleRegular(product.id)}
+                    className={`absolute top-2 right-2 p-2 rounded-full transition-all ${isRegular ? 'bg-red-500 text-white' : 'bg-white/70 text-gray-700 hover:bg-white'}`}
+                    aria-label={isRegular ? 'Remove from regulars' : 'Add to regulars'}
+                >
+                    <HeartIcon className="w-5 h-5" filled={isRegular} />
+                </button>
+             )}
+             {!available && (
+                 <div className="absolute inset-0 bg-gray-900 bg-opacity-30 flex items-center justify-center">
+                     <span className="bg-gray-800 text-white px-4 py-2 rounded-lg font-bold">Out of Stock in Area</span>
+                 </div>
+             )}
         </div>
         <div className="p-4">
-            <h3 className="text-lg font-semibold text-gray-800">{product.name}</h3>
-            <p className="text-sm text-gray-500">{product.farmer}</p>
+            <h3 className="text-lg font-semibold text-gray-800 truncate" title={product.name}>{product.name}</h3>
+            <p className="text-sm text-gray-500 truncate">{product.farmer}</p>
             <div className="flex justify-between items-center mt-4">
                 <p className="text-lg font-bold text-gray-900">${product.price.toFixed(2)} <span className="text-sm font-normal text-gray-600">/ {product.unit}</span></p>
-                <button onClick={() => onAddToCart(product)} className="bg-green-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-600 transition">Add to Cart</button>
+                <button disabled={!available} onClick={() => onAddToCart(product)} className="bg-green-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-600 transition disabled:bg-gray-400">Add</button>
             </div>
         </div>
     </div>
@@ -402,7 +409,7 @@ const ConfirmationView: React.FC<{ onContinue: () => void }> = ({ onContinue }) 
 
 
 const PersonalizedSuggestions: React.FC<{ user: User; onGetSuggestions: () => void; suggestions: AISuggestion[]; isLoading: boolean; }> = ({ user, onGetSuggestions, suggestions, isLoading }) => (
-    <div className="my-12 bg-green-50 border-2 border-green-200 border-dashed rounded-lg p-8 text-center">
+    <div className="mb-12 bg-green-50 border-2 border-green-200 border-dashed rounded-lg p-8 text-center">
         <h3 className="text-2xl font-bold text-green-800 mb-2">Just for you, {user.name.split(' ')[0]}!</h3>
         <p className="text-green-700 mb-4">Based on your recent orders, here are some fresh picks we think you'll love.</p>
         <button onClick={onGetSuggestions} disabled={isLoading} className="bg-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-700 transition disabled:bg-gray-400">
@@ -499,14 +506,87 @@ const BudgetTracker: React.FC<{ user: User }> = ({ user }) => {
     );
 };
 
+// #region Dashboard Components for Signed-in User
+
+const DashboardView: React.FC<{ 
+    user: User;
+    suggestions: AISuggestion[];
+    isLoadingSuggestions: boolean;
+    onGetSuggestions: () => void;
+    regionalProducts: Product[];
+    recipes: Recipe[];
+    isLoadingRecipes: boolean;
+    onGenerateRecipes: () => void;
+    onSelectRecipe: (recipe: Recipe) => void;
+}> = ({ user, suggestions, isLoadingSuggestions, onGetSuggestions, regionalProducts, recipes, isLoadingRecipes, onGenerateRecipes, onSelectRecipe }) => {
+    return (
+        <div>
+            <h3 className="text-2xl font-bold mb-6 text-gray-800">My Dashboard</h3>
+            
+            <PersonalizedSuggestions 
+                user={user} 
+                onGetSuggestions={onGetSuggestions} 
+                suggestions={suggestions} 
+                isLoading={isLoadingSuggestions} 
+            />
+
+            <div className="my-12">
+                <div className="text-center mb-8">
+                    <h2 className="text-3xl font-bold text-gray-800 flex items-center justify-center gap-3">
+                        <BookOpenIcon className="w-8 h-8 text-green-600" />
+                        Meal Ideas & Recipes
+                    </h2>
+                    <p className="text-gray-600 mt-2">Discover delicious meals you can make with our fresh ingredients.</p>
+                    <button 
+                        onClick={onGenerateRecipes} 
+                        disabled={isLoadingRecipes}
+                        className="mt-4 bg-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-700 transition disabled:bg-gray-400"
+                    >
+                        {isLoadingRecipes ? 'Generating...' : '✨ Generate with AI'}
+                    </button>
+                </div>
+                {recipes.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {recipes.map(recipe => (
+                            <div key={recipe.id} onClick={() => onSelectRecipe(recipe)} className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer transform hover:scale-105 transition-transform duration-300 group">
+                                <img src={recipe.imageUrl} alt={recipe.name} className="w-full h-48 object-cover" />
+                                <div className="p-4">
+                                    <h3 className="text-lg font-semibold text-gray-800">{recipe.name}</h3>
+                                    <p className="text-sm text-gray-600 mt-1 line-clamp-2">{recipe.description}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center p-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                        <p className="text-gray-500 italic">Click "Generate with AI" to get personalized recipe ideas based on currently available produce!</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// #endregion
+
+
 const ProfileView: React.FC<{ 
     user: User; 
     onUpdateUser: (updatedUser: User) => void; 
     onToggleRegular: (productId: string) => void; 
     onAddToCart: (product: Product) => void;
-    initialTab?: 'orders' | 'subscriptions' | 'regulars' | 'preferences' | 'manage';
-}> = ({ user, onUpdateUser, onToggleRegular, onAddToCart, initialTab = 'orders' }) => {
-    const [activeTab, setActiveTab] = useState<'orders' | 'subscriptions' | 'regulars' | 'preferences' | 'manage'>(initialTab);
+    initialTab?: 'dashboard' | 'orders' | 'subscriptions' | 'regulars' | 'preferences' | 'manage';
+    // Dashboard specific props
+    suggestions: AISuggestion[];
+    isLoadingSuggestions: boolean;
+    onGetSuggestions: () => void;
+    regionalProducts: Product[];
+    recipes: Recipe[];
+    isLoadingRecipes: boolean;
+    onGenerateRecipes: () => void;
+    onSelectRecipe: (recipe: Recipe) => void;
+}> = ({ user, onUpdateUser, onToggleRegular, onAddToCart, initialTab = 'dashboard', suggestions, isLoadingSuggestions, onGetSuggestions, regionalProducts, recipes, isLoadingRecipes, onGenerateRecipes, onSelectRecipe }) => {
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'subscriptions' | 'regulars' | 'preferences' | 'manage'>(initialTab);
     
     useEffect(() => {
         setActiveTab(initialTab);
@@ -518,6 +598,20 @@ const ProfileView: React.FC<{
 
     const renderProfileContent = () => {
         switch (activeTab) {
+            case 'dashboard':
+                return (
+                    <DashboardView 
+                        user={user}
+                        suggestions={suggestions}
+                        isLoadingSuggestions={isLoadingSuggestions}
+                        onGetSuggestions={onGetSuggestions}
+                        regionalProducts={regionalProducts}
+                        recipes={recipes}
+                        isLoadingRecipes={isLoadingRecipes}
+                        onGenerateRecipes={onGenerateRecipes}
+                        onSelectRecipe={onSelectRecipe}
+                    />
+                );
             case 'orders':
                 return (
                     <div>
@@ -670,6 +764,7 @@ const ProfileView: React.FC<{
             <div className="flex flex-col md:flex-row gap-8">
                 <aside className="md:w-1/4">
                     <nav className="flex flex-col space-y-2 sticky top-24">
+                         <button onClick={() => setActiveTab('dashboard')} className={`p-3 rounded-md text-left font-semibold flex items-center gap-3 ${activeTab === 'dashboard' ? 'bg-green-100 text-green-700' : 'hover:bg-gray-100'}`}><HomeModernIcon className="w-5 h-5"/>Dashboard</button>
                          <button onClick={() => setActiveTab('orders')} className={`p-3 rounded-md text-left font-semibold flex items-center gap-3 ${activeTab === 'orders' ? 'bg-green-100 text-green-700' : 'hover:bg-gray-100'}`}><ShoppingCartIcon className="w-5 h-5"/>My Orders</button>
                          <button onClick={() => setActiveTab('subscriptions')} className={`p-3 rounded-md text-left font-semibold flex items-center gap-3 ${activeTab === 'subscriptions' ? 'bg-green-100 text-green-700' : 'hover:bg-gray-100'}`}><LeafIcon className="w-5 h-5"/>My Subscriptions</button>
                          <button onClick={() => setActiveTab('regulars')} className={`p-3 rounded-md text-left font-semibold flex items-center gap-3 ${activeTab === 'regulars' ? 'bg-green-100 text-green-700' : 'hover:bg-gray-100'}`}><HeartIcon className="w-5 h-5"/>My Regulars</button>
@@ -792,10 +887,43 @@ const RecipeDetailModal: React.FC<{
     );
 };
 
+// Simple hashing function to determine availability based on strings
+const getRegionalProductData = (product: Product, postalCode: string) => {
+    // Sanitize
+    const cleanPostal = postalCode.replace(/\s/g, '').toUpperCase();
+    if (cleanPostal.length < 3) return { ...product, available: true };
+
+    const postalPrefix = cleanPostal.substring(0, 3);
+    
+    // Hash based on chars
+    let hash = 0;
+    for (let i = 0; i < postalPrefix.length; i++) {
+        hash = ((hash << 5) - hash) + postalPrefix.charCodeAt(i);
+        hash |= 0;
+    }
+    const productHash = product.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const combinedHash = Math.abs(hash + productHash);
+
+    // 10% chance item is unavailable in this region
+    const isAvailable = (combinedHash % 10) !== 0; 
+    
+    // Price variance +/- 10% based on region
+    const priceVariance = ((combinedHash % 20) - 10) / 100;
+    const regionalPrice = product.price * (1 + priceVariance);
+
+    return {
+        ...product,
+        price: regionalPrice,
+        available: isAvailable
+    };
+};
+
+
 const UserView: React.FC = () => {
     const [currentView, setCurrentView] = useState<UserViewType>('SHOP');
     const [postalCode, setPostalCode] = useState(mockUser.postalCode);
     const [selectedDeadline, setSelectedDeadline] = useState<OrderWindow>('Sunday');
+    const [selectedCategory, setSelectedCategory] = useState<string>('All');
     
     const [suggestions, setSuggestions] = useState<AISuggestion[]>([]);
     const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
@@ -807,28 +935,28 @@ const UserView: React.FC = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     
-    const [profileInitialTab, setProfileInitialTab] = useState<'orders' | 'subscriptions' | 'regulars' | 'preferences' | 'manage'>('orders');
+    const [profileInitialTab, setProfileInitialTab] = useState<'dashboard' | 'orders' | 'subscriptions' | 'regulars' | 'preferences' | 'manage'>('dashboard');
 
     const cart = useCart();
     
     const deadlineDate = calculateDeadlineDate(selectedDeadline);
 
-    const retailProducts: Product[] = useMemo(() => mockSourcedProducts
-        .filter(p => 
-            p.publishStatus === 'published' && 
-            p.publishTarget?.includes('retail') && 
-            (p.availableQuantity ?? 0) > 0
-        )
-        .map(p => ({
-            id: p.id,
-            name: p.name,
-            price: p.sellingPrice || 0,
-            unit: p.unit,
-            imageUrl: p.imageUrl,
-            farmer: p.supplierName,
-            category: p.category,
-            quantity: p.availableQuantity,
-        })), []);
+    // Apply Regional Logic
+    const regionalProducts = useMemo(() => {
+        return mockProducts.map(p => getRegionalProductData(p, postalCode));
+    }, [postalCode]);
+
+    // Apply Category Filter
+    const filteredProducts = useMemo(() => {
+        if (selectedCategory === 'All') return regionalProducts;
+        return regionalProducts.filter(p => p.category === selectedCategory);
+    }, [regionalProducts, selectedCategory]);
+
+    // Extract unique categories for sidebar
+    const categories = useMemo(() => {
+        const cats = new Set(mockProducts.map(p => p.category));
+        return ['All', ...Array.from(cats)];
+    }, []);
 
     const activeSubscriptions = useMemo(() => {
         if (!currentUser) return new Set<string>();
@@ -857,10 +985,10 @@ const UserView: React.FC = () => {
 
     const handleGenerateRecipes = useCallback(async () => {
         setIsLoadingRecipes(true);
-        const result = await generateRecipes(retailProducts);
+        const result = await generateRecipes(regionalProducts.filter(p => p.available));
         setRecipes(result);
         setIsLoadingRecipes(false);
-    }, [retailProducts]);
+    }, [regionalProducts]);
 
     const handleAddRecipeItemsToCart = (items: { product: Product; quantity: number }[]) => {
         items.forEach(item => {
@@ -933,7 +1061,7 @@ const UserView: React.FC = () => {
 
     const handleNavigate = (view: UserViewType) => {
         if (view === 'PROFILE') {
-            setProfileInitialTab('orders');
+            setProfileInitialTab('dashboard');
         }
         setCurrentView(view);
     };
@@ -948,49 +1076,63 @@ const UserView: React.FC = () => {
             case 'SHOP':
                 return (
                      <div className="container mx-auto px-6 py-8">
-                        <PersonalizedSuggestions user={currentUser || mockUser} onGetSuggestions={handleGetSuggestions} suggestions={suggestions} isLoading={isLoadingSuggestions} />
-                        
-                        <div className="my-12">
-                            <div className="text-center mb-8">
-                                <h2 className="text-3xl font-bold text-gray-800 flex items-center justify-center gap-3">
-                                    <BookOpenIcon className="w-8 h-8 text-green-600" />
-                                    Meal Ideas & Recipes
-                                </h2>
-                                <p className="text-gray-600 mt-2">Discover delicious meals you can make with our fresh ingredients.</p>
-                                <button 
-                                    onClick={handleGenerateRecipes} 
-                                    disabled={isLoadingRecipes}
-                                    className="mt-4 bg-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-700 transition disabled:bg-gray-400"
-                                >
-                                    {isLoadingRecipes ? 'Generating...' : '✨ Generate with AI'}
-                                </button>
-                            </div>
-                            {recipes.length > 0 && (
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                                    {recipes.map(recipe => (
-                                        <div key={recipe.id} onClick={() => setSelectedRecipe(recipe)} className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer transform hover:scale-105 transition-transform duration-300 group">
-                                            <img src={recipe.imageUrl} alt={recipe.name} className="w-full h-48 object-cover" />
-                                            <div className="p-4">
-                                                <h3 className="text-lg font-semibold text-gray-800">{recipe.name}</h3>
-                                                <p className="text-sm text-gray-600 mt-1 line-clamp-2">{recipe.description}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                        {/* Only show welcome banner/suggestions if logged in and on shop page, otherwise standard shop */}
+                         {!isAuthenticated && (
+                             <div className="mb-8 p-8 bg-green-50 rounded-lg text-center border border-green-100">
+                                 <h2 className="text-3xl font-bold text-gray-800 mb-2">Fresh From Our Local Farms</h2>
+                                 <p className="text-gray-600">Join Farm2Flat today for personalized recipes and exclusive local produce!</p>
+                                 <button onClick={() => setCurrentView('AUTH')} className="mt-4 bg-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-700">Sign Up / Sign In</button>
+                             </div>
+                         )}
 
-                        <h2 className="text-3xl font-bold text-gray-800 mb-6 border-t pt-8">Fresh from the Farm</h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                            {retailProducts.map(p => (
-                                <ProductCard 
-                                    key={p.id} 
-                                    product={p} 
-                                    onAddToCart={cart.addToCart}
-                                    isRegular={currentUser?.regularPurchaseList?.includes(p.id) || false}
-                                    onToggleRegular={handleToggleRegular}
-                                />
-                            ))}
+                        <div className="">
+                            <h2 className="text-3xl font-bold text-gray-800 mb-6">Fresh from the Farm Catalog</h2>
+                            
+                            <div className="flex flex-col lg:flex-row gap-8">
+                                {/* Sidebar Filters */}
+                                <aside className="lg:w-1/4">
+                                    <div className="bg-white p-4 rounded-lg shadow-md sticky top-24">
+                                        <h3 className="font-bold text-lg mb-4 text-gray-800">Categories</h3>
+                                        <ul className="space-y-1 max-h-[70vh] overflow-y-auto pr-2">
+                                            {categories.map(cat => (
+                                                <li key={cat}>
+                                                    <button 
+                                                        onClick={() => setSelectedCategory(cat)}
+                                                        className={`w-full text-left px-3 py-2 rounded-md transition-colors text-sm ${selectedCategory === cat ? 'bg-green-600 text-white font-semibold' : 'text-gray-600 hover:bg-gray-100'}`}
+                                                    >
+                                                        {cat}
+                                                    </button>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </aside>
+
+                                {/* Product Grid */}
+                                <div className="lg:w-3/4">
+                                    <div className="flex justify-between items-center mb-4">
+                                         <p className="text-sm text-gray-500">Showing {filteredProducts.length} items for region: <span className="font-bold text-green-700">{postalCode || 'Default'}</span></p>
+                                    </div>
+                                   
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {filteredProducts.map(p => (
+                                            <ProductCard 
+                                                key={p.id} 
+                                                product={p} 
+                                                onAddToCart={cart.addToCart}
+                                                isRegular={currentUser?.regularPurchaseList?.includes(p.id) || false}
+                                                onToggleRegular={handleToggleRegular}
+                                                available={p.available}
+                                            />
+                                        ))}
+                                        {filteredProducts.length === 0 && (
+                                            <div className="col-span-full text-center py-12 text-gray-500">
+                                                No products found in this category.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 );
@@ -1024,7 +1166,21 @@ const UserView: React.FC = () => {
                 return <ConfirmationView onContinue={() => setCurrentView('PROFILE')} />;
             case 'PROFILE':
                  if (!currentUser) return <AuthView onAuthSuccess={handleAuthSuccess} />; // Protect profile route
-                 return <ProfileView user={currentUser} onUpdateUser={setCurrentUser} onToggleRegular={handleToggleRegular} onAddToCart={cart.addToCart} initialTab={profileInitialTab} />;
+                 return <ProfileView 
+                    user={currentUser} 
+                    onUpdateUser={setCurrentUser} 
+                    onToggleRegular={handleToggleRegular} 
+                    onAddToCart={cart.addToCart} 
+                    initialTab={profileInitialTab}
+                    suggestions={suggestions}
+                    isLoadingSuggestions={isLoadingSuggestions}
+                    onGetSuggestions={handleGetSuggestions}
+                    regionalProducts={regionalProducts}
+                    recipes={recipes}
+                    isLoadingRecipes={isLoadingRecipes}
+                    onGenerateRecipes={handleGenerateRecipes}
+                    onSelectRecipe={setSelectedRecipe}
+                />;
             default:
                 return null;
         }
@@ -1040,7 +1196,7 @@ const UserView: React.FC = () => {
              {selectedRecipe && (
                 <RecipeDetailModal 
                     recipe={selectedRecipe} 
-                    availableProducts={retailProducts}
+                    availableProducts={regionalProducts} // Pass all regional products for recipe matching
                     onClose={() => setSelectedRecipe(null)} 
                     onAddToCart={handleAddRecipeItemsToCart}
                 />

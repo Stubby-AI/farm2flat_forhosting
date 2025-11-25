@@ -1,17 +1,332 @@
+
 import { Product, SubscriptionBox, SubscriptionSize, Order, User, Farmer, Hub, CartItem, PortalUser, StaffMember, Supplier, Customer, PurchaseOrder, Business, Driver, Vehicle, Route, SeasonalTrend, Campaign, Ticket, SourcedProduct, Payment, Invoice } from '../types';
 
-export const mockProducts: Product[] = [
-  { id: 'p1', name: 'Organic Carrots', price: 2.50, unit: 'bunch', imageUrl: 'https://picsum.photos/id/1080/400/300', farmer: 'Green Acres Farm' },
-  { id: 'p2', name: 'Heirloom Tomatoes', price: 4.00, unit: 'lb', imageUrl: 'https://picsum.photos/id/1078/400/300', farmer: 'Sunnyvale Orchards' },
-  { id: 'p3', name: 'Red Bell Peppers', price: 1.50, unit: 'each', imageUrl: 'https://picsum.photos/id/1025/400/300', farmer: 'Green Acres Farm' },
-  { id: 'p4', name: 'Spinach', price: 3.00, unit: 'bag', imageUrl: 'https://picsum.photos/id/292/400/300', farmer: 'Riverbend Gardens' },
-  { id: 'p5', name: 'Gala Apples', price: 3.50, unit: 'lb', imageUrl: 'https://picsum.photos/id/431/400/300', farmer: 'Sunnyvale Orchards' },
-  { id: 'p6', name: 'Cucumbers', price: 1.00, unit: 'each', imageUrl: 'https://picsum.photos/id/202/400/300', farmer: 'Riverbend Gardens' },
-  { id: 'p7', name: 'Potatoes', price: 2.75, unit: '5lb bag', imageUrl: 'https://picsum.photos/id/1043/400/300', farmer: 'Green Acres Farm' },
-  { id: 'p8', name: 'Onions', price: 1.25, unit: 'lb', imageUrl: 'https://picsum.photos/id/1079/400/300', farmer: 'Riverbend Gardens' },
-  { id: 'p9', name: 'Sweet Potatoes', price: 3.20, unit: 'lb', imageUrl: 'https://picsum.photos/id/1044/400/300', farmer: 'Green Acres Farm' },
-  { id: 'p10', name: 'Broccoli', price: 2.80, unit: 'head', imageUrl: 'https://picsum.photos/id/1045/400/300', farmer: 'Riverbend Gardens' }
-];
+// Helper to generate IDs
+const generateId = (prefix: string, index: number) => `${prefix}-${index}`;
+
+// Raw Data from User Prompt
+const RAW_CATALOG = {
+  "Root Vegetables": [
+    { name: "Carrots", price: 2.49, unit: "bunch" },
+    { name: "Fresh Mini Carrots", price: 2.99, unit: "bag" },
+    { name: "Beets", price: 2.99, unit: "bunch" },
+    { name: "Turnips", price: 1.99, unit: "lb" },
+    { name: "Sweet Potatoes", price: 1.99, unit: "lb" },
+    { name: "Ontario Potatoes – White", price: 5.99, unit: "10lb bag" },
+    { name: "Yukon Gold Potatoes", price: 6.99, unit: "10lb bag" },
+    { name: "Red Potatoes", price: 6.49, unit: "10lb bag" },
+    { name: "Russet Potatoes", price: 6.49, unit: "10lb bag" },
+    { name: "Little Potatoes (EDM)", price: 4.49, unit: "bag" },
+    { name: "Little Potatoes – Zingers", price: 4.99, unit: "bag" },
+    { name: "LPC – Jazz Roasters", price: 4.99, unit: "bag" },
+    { name: "Ginger (Chinese)", price: 3.99, unit: "lb" },
+    { name: "Garlic (Chinese)", price: 0.60, unit: "bulb" },
+    { name: "Garlic (Mexican)", price: 0.80, unit: "bulb" },
+  ],
+  "Cucumbers": [
+    { name: "English Cucumbers", price: 1.99, unit: "each" },
+    { name: "Dill Cucumbers (Mexican)", price: 2.49, unit: "lb" },
+  ],
+  "Peppers": [
+    { name: "Green Peppers", price: 2.49, unit: "lb" },
+    { name: "Red Bell Peppers", price: 3.99, unit: "lb" },
+    { name: "Orange Bell Peppers", price: 3.99, unit: "lb" },
+    { name: "Yellow Bell Peppers", price: 3.99, unit: "lb" },
+    { name: "Poblano Pepper", price: 4.49, unit: "lb" },
+    { name: "Jalapeno Pepper", price: 0.30, unit: "each" },
+  ],
+  "Tomatoes": [
+    { name: "US Tomatoes (Florida)", price: 2.49, unit: "lb" },
+    { name: "Roma Tomatoes (Cal)", price: 2.29, unit: "lb" },
+    { name: "Campari Tomatoes", price: 4.99, unit: "pack" },
+    { name: "Hothouse Tomatoes", price: 2.99, unit: "lb" },
+  ],
+  "Beans": [
+    { name: "Green Beans", price: 3.49, unit: "lb" },
+  ],
+  "Leafy Greens (Western)": [
+    { name: "Spinach", price: 2.99, unit: "bunch" },
+    { name: "Kale", price: 2.99, unit: "bunch" },
+    { name: "Head Lettuce", price: 2.99, unit: "head" },
+    { name: "Red Leaf Lettuce", price: 2.49, unit: "head" },
+    { name: "Green Leaf Lettuce", price: 2.49, unit: "head" },
+    { name: "Romaine", price: 2.99, unit: "head" },
+    { name: "Romaine Hearts", price: 4.99, unit: "3-pack" },
+    { name: "Red Boston Lettuce", price: 3.49, unit: "head" },
+    { name: "Endive", price: 3.99, unit: "each" },
+    { name: "Escarole", price: 3.99, unit: "each" },
+    { name: "Savoy Cabbage", price: 2.49, unit: "head" },
+    { name: "Radicchio", price: 4.49, unit: "head" },
+  ],
+  "Cruciferous": [
+    { name: "Broccoli", price: 3.49, unit: "head" },
+    { name: "Cauliflower", price: 4.49, unit: "head" },
+    { name: "Green Cabbage", price: 1.99, unit: "head" },
+    { name: "Red Cabbage", price: 2.29, unit: "head" },
+    { name: "Brussel Sprouts", price: 4.99, unit: "lb" },
+  ],
+  "Eggplant": [
+    { name: "Eggplant (standard western)", price: 2.49, unit: "each" },
+  ],
+  "Herbs (Western)": [
+    { name: "Cilantro", price: 1.29, unit: "bunch" },
+    { name: "Plain Parsley", price: 1.29, unit: "bunch" },
+    { name: "Curly Parsley", price: 1.29, unit: "bunch" },
+    { name: "Coriander", price: 1.49, unit: "bunch" },
+    { name: "Bunched Dill Weed", price: 1.99, unit: "bunch" },
+    { name: "Mint", price: 1.99, unit: "bunch" },
+  ],
+  "Squash & Zucchini": [
+    { name: "Green Zucchini", price: 1.99, unit: "lb" },
+    { name: "Green Zucchini (Mexican)", price: 1.79, unit: "lb" },
+    { name: "Butternut Squash", price: 1.49, unit: "lb" },
+    { name: "Mexican-Gray Squash", price: 1.99, unit: "lb" },
+  ],
+  "Aromatics": [
+    { name: "Cooking Onions", price: 3.99, unit: "bag" },
+    { name: "Spanish Onions", price: 1.99, unit: "lb" },
+    { name: "Red Onions", price: 2.29, unit: "lb" },
+    { name: "White Onions", price: 2.49, unit: "lb" },
+    { name: "Green Onions", price: 0.99, unit: "bunch" },
+    { name: "Leeks Can.", price: 3.49, unit: "bunch" },
+    { name: "Celery", price: 2.99, unit: "stalk" },
+  ],
+  "Melons": [
+    { name: "Seedless Watermelon", price: 7.99, unit: "each" },
+    { name: "Honeydew Melons", price: 5.99, unit: "each" },
+    { name: "Cantaloupe", price: 4.99, unit: "each" },
+  ],
+  "Premium": [
+    { name: "Avocadoes", price: 2.49, unit: "each" },
+  ],
+  "Tropical Fruits": [
+    { name: "Pineapple", price: 4.99, unit: "each" },
+    { name: "Mangoes", price: 1.99, unit: "each" },
+    { name: "Ataulfo Mangoes", price: 2.29, unit: "each" },
+    { name: "Oranges", price: 1.25, unit: "each" },
+    { name: "Limes", price: 0.69, unit: "each" },
+    { name: "Lemons", price: 0.89, unit: "each" },
+    { name: "Juice Oranges", price: 0.99, unit: "each" },
+  ],
+  "Asian Greens": [
+    { name: "Shanghai Choy", price: 2.49, unit: "lb" },
+    // Spinach shared, already listed above
+  ],
+  "Misc Greens": [
+    { name: "Arugula-type items", price: 4.99, unit: "clamshell" },
+  ],
+  "Sprouts & Microgreens": [
+    { name: "ALFALFA AND ONION SPRO", price: 3.99, unit: "pack" },
+    { name: "ALFALFA BABY ONION SPRO", price: 3.99, unit: "pack" },
+    { name: "ALFALFA BROCCOLI SPROU", price: 4.49, unit: "pack" },
+    { name: "ALFALFA PEA SHOOTS", price: 4.49, unit: "pack" },
+    { name: "ALFALFA SPICY SPROUTS", price: 3.99, unit: "pack" },
+    { name: "ALFALFA SPROUTS", price: 3.49, unit: "pack" },
+    { name: "BEAN SPROUTS", price: 1.99, unit: "bag" },
+    { name: "MICRO BROCCOLI CLAM", price: 5.99, unit: "clamshell" },
+    { name: "MICRO CABBAGE CLAM", price: 5.99, unit: "clamshell" },
+    { name: "MICRO CILANTRO CLAM", price: 6.49, unit: "clamshell" },
+    { name: "MICRO CRUNCHY MIX CLAM C", price: 6.49, unit: "clamshell" },
+    { name: "MICRO KALE CLAM", price: 5.99, unit: "clamshell" },
+    { name: "RAINBOW MIX CLAM", price: 6.49, unit: "clamshell" },
+    { name: "SUNFLOWER SHOOTS CLAM C", price: 5.49, unit: "clamshell" },
+    { name: "SUNFLOWER SPROUTS", price: 4.99, unit: "pack" },
+    { name: "SLEGERS MICRO BROCCOLI", price: 5.49, unit: "pack" },
+    { name: "SLEGERS MIXED SPROUTS", price: 5.49, unit: "pack" },
+  ],
+  "Lettuce & Mixes": [
+    { name: "ARUGULA BABY", price: 4.99, unit: "clamshell" },
+    { name: "ARUGULA BABY ORG US", price: 5.99, unit: "clamshell" },
+    { name: "ARUGULA BABY QV", price: 5.49, unit: "clamshell" },
+    { name: "ARUGULA, LITTLE BEAR", price: 5.49, unit: "clamshell" },
+    { name: "BOSTON HYDRO", price: 3.49, unit: "head" },
+    { name: "BOSTON HYDRO GRN GRN", price: 3.49, unit: "head" },
+    { name: "BOSTON HYDRO RED GRN", price: 3.49, unit: "head" },
+    { name: "GREEN LEAF HYDRO", price: 3.49, unit: "head" },
+    { name: "GREEN OAK", price: 3.49, unit: "head" },
+    { name: "ICEBERG LETTUCE, JUMBO QV", price: 2.99, unit: "head" },
+    { name: "ICEBERG LETTUCE, REGULAR", price: 2.49, unit: "head" },
+    { name: "ICEBERG LETTUCE, WRAP QV", price: 2.99, unit: "head" },
+    { name: "LETTUCE BABY GEM", price: 4.49, unit: "pack" },
+    { name: "LOLLA ROSA", price: 3.49, unit: "head" },
+    { name: "MACHE LETTUCE", price: 4.99, unit: "pack" },
+    { name: "ROMAINE HYDRO", price: 3.49, unit: "head" },
+    { name: "ROMAINE, BABY GREEN", price: 4.49, unit: "pack" },
+    { name: "SLEGERS MIX LETTUCE", price: 3.99, unit: "pack" },
+    { name: "SLEGERS ROMAINE LETTUCE", price: 3.99, unit: "pack" },
+    { name: "SLEGERS SUMMER SALAD", price: 3.99, unit: "pack" },
+    { name: "TRIO LIVING LETTUCE", price: 4.99, unit: "pack" },
+    { name: "EMERALD SPRING MIX", price: 5.99, unit: "clamshell" },
+    { name: "ORG SPRING MIX", price: 6.99, unit: "clamshell" },
+    { name: "SPRING MIX", price: 5.49, unit: "clamshell" },
+    { name: "SPRING MIX ORG US", price: 6.49, unit: "clamshell" },
+    { name: "SPRING MIX QV", price: 5.99, unit: "clamshell" },
+  ],
+  "Herbs (Detailed)": [
+    { name: "BASIL", price: 2.49, unit: "pack" },
+    { name: "BASIL CDN", price: 2.49, unit: "pack" },
+    { name: "BASIL US", price: 2.99, unit: "pack" },
+    { name: "BASIL, OPAL", price: 2.99, unit: "pack" },
+    { name: "BASIL, THAI", price: 2.99, unit: "pack" },
+    { name: "BAY LEAVES US", price: 3.49, unit: "pack" },
+    { name: "CHERVIL US", price: 3.49, unit: "pack" },
+    { name: "CILANTRO SEEDLING", price: 4.99, unit: "tray" },
+    { name: "CILANTRO US", price: 1.49, unit: "bunch" },
+    { name: "CURRY LEAF", price: 2.49, unit: "pack" },
+    { name: "DILLWEED", price: 1.99, unit: "bunch" },
+    { name: "LAVENDER US", price: 3.99, unit: "bunch" },
+    { name: "LEMON BALM US", price: 2.99, unit: "pack" },
+    { name: "LEMON GRASS US", price: 2.99, unit: "stalk" },
+    { name: "LEMON THYME US", price: 2.99, unit: "pack" },
+    { name: "MARJORAM US", price: 2.99, unit: "pack" },
+    { name: "MINT MOR", price: 2.49, unit: "bunch" },
+    { name: "OREGANO", price: 2.49, unit: "pack" },
+    { name: "ROSEMARY", price: 2.49, unit: "pack" },
+    { name: "SAGE", price: 2.49, unit: "pack" },
+    { name: "SAVORY", price: 2.49, unit: "pack" },
+    { name: "TARRAGON", price: 2.99, unit: "pack" },
+    { name: "THYME", price: 2.49, unit: "pack" },
+  ],
+  "Plant-Based": [
+    { name: "TOFU FIRM", price: 2.99, unit: "pack" },
+    { name: "TOFU SILKEN", price: 2.99, unit: "pack" },
+    { name: "TOFU SMOKED", price: 3.49, unit: "pack" },
+    { name: "TEMPEH", price: 4.49, unit: "pack" },
+    { name: "SEITAN", price: 5.99, unit: "pack" },
+    { name: "VEG BURGER", price: 6.99, unit: "pack" },
+    { name: "VEG SAUSAGE", price: 6.99, unit: "pack" },
+  ],
+  "Misc & Specialty": [
+    { name: "EDIBLE FLOWERS MIX", price: 7.99, unit: "pack" },
+    { name: "EDIBLE FLOWERS ROSE", price: 8.99, unit: "pack" },
+    { name: "MUSHROOM SHIITAKE", price: 6.99, unit: "lb" },
+    { name: "MUSHROOM OYSTER", price: 7.99, unit: "lb" },
+    { name: "MUSHROOM WHITE", price: 3.49, unit: "pack" },
+    { name: "MUSHROOM BROWN", price: 3.99, unit: "pack" },
+    { name: "SPROUT GARNISH", price: 3.99, unit: "pack" },
+    { name: "ALGAE SEAWEED", price: 4.99, unit: "pack" },
+    { name: "SPROUT SAMPLER", price: 5.99, unit: "pack" },
+  ],
+  "Ethnic & Exotic": [
+    { name: "Bamboo Shoots", price: 3.99, unit: "can" },
+    { name: "Green Coconuts", price: 3.49, unit: "each" },
+    { name: "Hawaiian Plantain", price: 2.49, unit: "lb" },
+    { name: "Indian Red Carrots (China)", price: 2.99, unit: "lb" },
+    { name: "Kabocha Squash", price: 1.99, unit: "lb" },
+    { name: "Sugarcane", price: 4.99, unit: "stalk" },
+    { name: "Baby Okra", price: 4.99, unit: "lb" },
+    { name: "Indian Okra", price: 4.49, unit: "lb" },
+    { name: "Chinese Eggplant", price: 2.99, unit: "lb" },
+    { name: "Indian Eggplant Graffiti", price: 3.49, unit: "lb" },
+    { name: "Pea Eggplant", price: 5.99, unit: "lb" },
+    { name: "Thai Eggplant PM", price: 4.49, unit: "lb" },
+    { name: "Chinese Bittermelon", price: 3.49, unit: "lb" },
+    { name: "Indian Bittermelon", price: 3.99, unit: "lb" },
+    { name: "Hungarian Peppers", price: 3.99, unit: "lb" },
+    { name: "Long Chilli Green", price: 4.99, unit: "lb" },
+    { name: "Mix Scotch Bonnet", price: 6.99, unit: "lb" },
+    { name: "Red Scotch Bonnet", price: 6.99, unit: "lb" },
+    { name: "Serrano Peppers", price: 4.99, unit: "lb" },
+    { name: "Thai Chilli – Red", price: 5.99, unit: "lb" },
+    { name: "Thai Chilli – Green", price: 5.99, unit: "lb" },
+    { name: "Armenian Cucumber", price: 3.99, unit: "each" },
+    { name: "Ash Gourd", price: 2.49, unit: "lb" },
+    { name: "Bengali Squash", price: 2.99, unit: "lb" },
+    { name: "Chayote", price: 1.49, unit: "each" },
+    { name: "Chinese Okra", price: 3.99, unit: "lb" },
+    { name: "Indian Long Squash", price: 2.99, unit: "lb" },
+    { name: "Pumpkin Large – Fairytale", price: 8.99, unit: "each" },
+    { name: "Snake Gourd", price: 3.49, unit: "lb" },
+    { name: "Tindora", price: 3.99, unit: "lb" },
+    { name: "Green Long Beans", price: 3.99, unit: "bunch" },
+    { name: "Purple Valor Beans", price: 4.49, unit: "lb" },
+    { name: "Valor Beans", price: 4.29, unit: "lb" },
+    { name: "White Long Beans", price: 3.99, unit: "bunch" },
+  ],
+  "Leaves & Roots": [
+    { name: "Culantro / Shadow Benny", price: 2.99, unit: "bunch" },
+    { name: "Curry Leaves", price: 2.49, unit: "pack" },
+    { name: "Drumstick Leaves", price: 3.49, unit: "bunch" },
+    { name: "Gongura Leaves", price: 3.49, unit: "bunch" },
+    { name: "Mango Leaf", price: 1.99, unit: "pack" },
+    { name: "Neem Leaf", price: 2.99, unit: "pack" },
+    { name: "Aloe Vera", price: 2.99, unit: "leaf" },
+    { name: "Breadfruit", price: 5.99, unit: "each" },
+    { name: "Cassava", price: 1.99, unit: "lb" },
+    { name: "Eddoes", price: 2.49, unit: "lb" },
+    { name: "Ginger (China)", price: 2.99, unit: "lb" },
+    { name: "Ginger (Peru)", price: 4.99, unit: "lb" },
+    { name: "Jicama", price: 1.99, unit: "lb" },
+    { name: "Malanga Coco (Purple)", price: 3.49, unit: "lb" },
+    { name: "Turmeric", price: 6.99, unit: "lb" },
+    { name: "White Yam", price: 2.99, unit: "lb" },
+    { name: "Yellow Yam", price: 2.99, unit: "lb" },
+  ],
+  "Other Veg & Fruit": [
+    { name: "Banana Flower", price: 4.99, unit: "each" },
+    { name: "Banana Stem", price: 3.99, unit: "stalk" },
+    { name: "Coconut Wrapped", price: 3.99, unit: "each" },
+    { name: "Dosakai", price: 2.99, unit: "lb" },
+    { name: "Green Mango", price: 2.49, unit: "each" },
+    { name: "Green Papaya", price: 3.49, unit: "each" },
+    { name: "Jackfruit Green", price: 1.99, unit: "lb" },
+    { name: "Tomatillo", price: 3.99, unit: "lb" },
+    { name: "Fresh Guava", price: 4.99, unit: "clamshell" },
+    { name: "Jackfruit Ripe", price: 8.99, unit: "pack" },
+    { name: "Quenepas / Guinep", price: 5.99, unit: "lb" },
+    { name: "Rambutan", price: 7.99, unit: "lb" },
+    { name: "Thai Banana", price: 2.49, unit: "hand" },
+  ],
+  "Indian": [
+    { name: "Amla", price: 4.99, unit: "lb" },
+    { name: "Arbee", price: 3.49, unit: "lb" },
+    { name: "Betel Leaves", price: 4.99, unit: "pack" },
+    { name: "Bombay Onion", price: 2.99, unit: "bag" },
+    { name: "Chiku", price: 6.99, unit: "lb" },
+    { name: "Drumsticks", price: 4.99, unit: "lb" },
+    { name: "Guar Beans", price: 4.49, unit: "lb" },
+    { name: "Kantola", price: 5.99, unit: "lb" },
+    { name: "Parwal", price: 4.99, unit: "lb" },
+    { name: "Shallots", price: 3.99, unit: "lb" },
+    { name: "Suran", price: 3.49, unit: "lb" },
+    { name: "Tinda", price: 3.99, unit: "lb" },
+  ]
+};
+
+// Generate Mock Products
+export const mockProducts: Product[] = Object.entries(RAW_CATALOG).flatMap(([category, items], catIndex) => {
+  return items.map((item, itemIndex) => {
+    // Determine a consistent "Farmer" based on category
+    let farmer = "Green Acres Farm";
+    if (category.includes("Fruit") || category.includes("Melon")) farmer = "Sunnyvale Orchards";
+    if (category.includes("Indian") || category.includes("Asian") || item.name.includes("Thai") || item.name.includes("Chinese")) farmer = "Riverbend Gardens";
+    if (category.includes("Root") || item.name.includes("Potato")) farmer = "Prairie Harvest";
+
+    // Generate a placeholder image that contains the text of the product name
+    const encodedName = encodeURIComponent(item.name);
+    // Rotating colors for categories to look nice
+    const colors = ["e9f5e9", "fff3e0", "e3f2fd", "f3e5f5", "ffebee", "f1f8e9", "e1bee7", "ffccbc"];
+    const color = colors[catIndex % colors.length];
+    const textColor = "1f2937";
+    const imageUrl = `https://placehold.co/400x300/${color}/${textColor}?text=${encodedName}`;
+
+    return {
+      id: generateId('p', catIndex * 1000 + itemIndex),
+      name: item.name,
+      price: item.price,
+      unit: item.unit,
+      imageUrl: imageUrl,
+      farmer: farmer,
+      category: category,
+      subcategory: category, // simplifying for this view
+      availableDate: '2024-06-01',
+      status: 'Available',
+      quantity: Math.floor(Math.random() * 200) + 10,
+      moq: 1,
+      isSeasonal: Math.random() > 0.7
+    };
+  });
+});
 
 export const mockSubscriptionBoxes: SubscriptionBox[] = [
     {
@@ -22,8 +337,8 @@ export const mockSubscriptionBoxes: SubscriptionBox[] = [
         price: 25.00,
         description: 'A weekly selection of essential vegetables for one person.',
         contentsSample: ['Carrots', 'Potatoes', 'Onions', 'Broccoli', 'Lettuce'],
-        imageUrl: 'https://picsum.photos/id/102/400/300',
-        currentContents: ['p1', 'p7', 'p8', 'p10'],
+        imageUrl: 'https://placehold.co/400x300/e9f5e9/1f2937?text=Veggie+Box',
+        currentContents: ['p-0', 'p-6', 'p-100', 'p-200'],
     },
     {
         id: 'sb2',
@@ -33,8 +348,8 @@ export const mockSubscriptionBoxes: SubscriptionBox[] = [
         price: 40.00,
         description: 'Perfect for couples or small families, a variety of fresh veggies.',
         contentsSample: ['Carrots', 'Potatoes', 'Onions', 'Broccoli', 'Lettuce', 'Tomatoes', 'Peppers'],
-        imageUrl: 'https://picsum.photos/id/103/400/300',
-        currentContents: ['p1', 'p7', 'p8', 'p10', 'p2', 'p3'],
+        imageUrl: 'https://placehold.co/400x300/e9f5e9/1f2937?text=Family+Veggie+Box',
+        currentContents: ['p-0', 'p-6', 'p-100', 'p-200', 'p-300', 'p-201'],
     },
     {
         id: 'sb3',
@@ -44,8 +359,8 @@ export const mockSubscriptionBoxes: SubscriptionBox[] = [
         price: 35.00,
         description: 'A delicious assortment of seasonal fruits for 2-3 people.',
         contentsSample: ['Apples', 'Bananas', 'Oranges', 'Berries', 'Grapes'],
-        imageUrl: 'https://picsum.photos/id/104/400/300',
-        currentContents: ['p5'],
+        imageUrl: 'https://placehold.co/400x300/fff3e0/1f2937?text=Fruit+Box',
+        currentContents: ['p-910'],
     },
     {
         id: 'sb4',
@@ -55,12 +370,11 @@ export const mockSubscriptionBoxes: SubscriptionBox[] = [
         price: 45.00,
         description: 'A mix of fruits and veggies common in Asian cuisine.',
         contentsSample: ['Bok Choy', 'Daikon Radish', 'Ginger', 'Napa Cabbage', 'Apples', 'Pears'],
-        imageUrl: 'https://picsum.photos/id/105/400/300',
-        currentContents: ['p1', 'p5'],
+        imageUrl: 'https://placehold.co/400x300/f3e5f5/1f2937?text=Asian+Fusion+Box',
+        currentContents: ['p-12', 'p-511'],
     },
 ];
 
-// FIX: Explicitly type the return of the map to CartItem to prevent type widening on the 'type' property.
 const MOCK_ORDER_ITEMS: CartItem[] = mockProducts.slice(0, 3).map((p, i): CartItem => ({
     cartId: `mock-cart-${p.id}-${i}`,
     id: p.id,
@@ -89,9 +403,8 @@ export const mockOrders: Order[] = [
   },
   { 
     id: 'o2', 
-    userId: 'b1', // This order is from a business customer
+    userId: 'b1', 
     date: '2023-10-29', 
-    // FIX: Explicitly type the return of the map to CartItem to prevent type widening on the 'type' property.
     items: mockProducts.slice(2, 4).map((p,i): CartItem => ({
         cartId: `mock-cart-${p.id}-${i+3}`,
         id: p.id,
@@ -116,7 +429,6 @@ export const mockOrders: Order[] = [
     userId: 'u1', 
     date: '2023-11-02', 
     items: [
-        // FIX: Explicitly type the return of the map to CartItem to prevent type widening on the 'type' property.
         ...mockProducts.slice(4, 7).map((p,i): CartItem => ({
             cartId: `mock-cart-${p.id}-${i+5}`,
             id: p.id,
@@ -138,30 +450,6 @@ export const mockOrders: Order[] = [
         trackingStatus: 'Order Confirmed'
     } 
   },
-  {
-    id: 'o4',
-    userId: 'u1',
-    date: '2023-11-05',
-    // FIX: Explicitly type the return of the map to CartItem to prevent type widening on the 'type' property.
-    items: mockProducts.slice(1, 3).map((p, i): CartItem => ({
-        cartId: `mock-cart-${p.id}-${i+10}`,
-        id: p.id,
-        name: p.name,
-        price: p.price,
-        imageUrl: p.imageUrl,
-        quantity: 1,
-        type: 'product',
-        unit: p.unit,
-    })),
-    total: 5.50,
-    status: 'Packed',
-    orderType: 'one_time',
-    paymentStatus: 'paid',
-    deliveryDetails: {
-        estimatedArrival: 'November 9, 2023',
-        trackingStatus: 'Preparing'
-    }
-  }
 ];
 
 export const mockUser: User = {
@@ -172,7 +460,7 @@ export const mockUser: User = {
     orderHistory: mockOrders.filter(o => o.userId === 'u1'),
     familySize: 2,
     preferences: ['organic', 'local-only'],
-    regularPurchaseList: ['p1', 'p4'],
+    regularPurchaseList: ['p-0', 'p-5'],
     groceryBudget: { amount: 100, period: 'Weekly' },
     loyaltyCredits: 75.50,
     lifetimeValue: 450.75,
@@ -287,9 +575,9 @@ export const mockFarmers: Farmer[] = [
 ];
 
 export const mockBusinessProducts: Product[] = [
-    { id: 'bp1', name: 'Garden Salad', price: 12.50, unit: 'plate', imageUrl: 'https://picsum.photos/id/203/400/300', farmer: 'The Grand Restaurant', moq: 1, isSeasonal: true },
-    { id: 'bp2', name: 'Tomato Soup', price: 8.00, unit: 'bowl', imageUrl: 'https://picsum.photos/id/204/400/300', farmer: 'The Grand Restaurant', moq: 1, isSeasonal: true },
-    { id: 'bp3', name: 'Roast Chicken', price: 24.00, unit: 'plate', imageUrl: 'https://picsum.photos/id/205/400/300', farmer: 'The Grand Restaurant', moq: 1, isSeasonal: false },
+    { id: 'bp1', name: 'Garden Salad', price: 12.50, unit: 'plate', imageUrl: 'https://placehold.co/400x300?text=Salad', farmer: 'The Grand Restaurant', moq: 1, isSeasonal: true },
+    { id: 'bp2', name: 'Tomato Soup', price: 8.00, unit: 'bowl', imageUrl: 'https://placehold.co/400x300?text=Soup', farmer: 'The Grand Restaurant', moq: 1, isSeasonal: true },
+    { id: 'bp3', name: 'Roast Chicken', price: 24.00, unit: 'plate', imageUrl: 'https://placehold.co/400x300?text=Chicken', farmer: 'The Grand Restaurant', moq: 1, isSeasonal: false },
 ];
 
 export const mockBusinessCustomerOrders: Order[] = [
@@ -328,17 +616,16 @@ export const mockBusinesses: Business[] = [
 
 
 export const mockFarmerProducts: Product[] = [
-    { ...mockProducts[0], category: 'Vegetable', subcategory: 'Root', availableDate: '2024-05-20', status: 'Available', quantity: 150, farmer: 'Green Acres Farm', moq: 10, isSeasonal: true }, // Carrots
-    { ...mockProducts[2], category: 'Vegetable', subcategory: 'Fruit Vegetable', availableDate: '2024-05-22', status: 'Available', quantity: 80, farmer: 'Green Acres Farm', moq: 5, isSeasonal: true }, // Peppers
-    { ...mockProducts[6], category: 'Vegetable', subcategory: 'Tuber', availableDate: '2024-05-25', status: 'Unavailable', quantity: 0, farmer: 'Green Acres Farm', moq: 20, isSeasonal: false }, // Potatoes
-    { ...mockProducts[3], category: 'Vegetable', subcategory: 'Leafy Green', availableDate: '2024-05-20', status: 'Available', quantity: 120, farmer: 'Riverbend Gardens', moq: 15, isSeasonal: true }, // Spinach
-    { ...mockProducts[4], category: 'Fruit', subcategory: 'Pome', availableDate: '2024-06-01', status: 'Available', quantity: 200, farmer: 'Sunnyvale Orchards', moq: 25, isSeasonal: false }, // Apples
+    { ...mockProducts[0], category: 'Vegetable', subcategory: 'Root', availableDate: '2024-05-20', status: 'Available', quantity: 150, farmer: 'Green Acres Farm', moq: 10, isSeasonal: true }, 
+    { ...mockProducts[2], category: 'Vegetable', subcategory: 'Fruit Vegetable', availableDate: '2024-05-22', status: 'Available', quantity: 80, farmer: 'Green Acres Farm', moq: 5, isSeasonal: true },
+    { ...mockProducts[6], category: 'Vegetable', subcategory: 'Tuber', availableDate: '2024-05-25', status: 'Unavailable', quantity: 0, farmer: 'Green Acres Farm', moq: 20, isSeasonal: false }, 
+    { ...mockProducts[3], category: 'Vegetable', subcategory: 'Leafy Green', availableDate: '2024-05-20', status: 'Available', quantity: 120, farmer: 'Riverbend Gardens', moq: 15, isSeasonal: true }, 
+    { ...mockProducts[4], category: 'Fruit', subcategory: 'Pome', availableDate: '2024-06-01', status: 'Available', quantity: 200, farmer: 'Sunnyvale Orchards', moq: 25, isSeasonal: false }, 
 ];
 
 export const mockImportedFarmerProducts: Product[] = [
-    { id: 'imp1', name: 'Zucchini', price: 1.75, unit: 'each', imageUrl: 'https://picsum.photos/id/211/400/300', farmer: 'Green Acres Farm', category: 'Vegetable', subcategory: 'Fruit Vegetable', availableDate: '2024-06-10', status: 'Available', quantity: 90, moq: 12, isSeasonal: true },
-    { id: 'imp2', name: 'Strawberries', price: 5.50, unit: 'quart', imageUrl: 'https://picsum.photos/id/1082/400/300', farmer: 'Green Acres Farm', category: 'Fruit', subcategory: 'Berry', availableDate: '2024-06-15', status: 'Available', quantity: 60, moq: 1, isSeasonal: true },
-    { id: 'imp3', name: 'Asparagus', price: 4.25, unit: 'bunch', imageUrl: 'https://picsum.photos/id/495/400/300', farmer: 'Green Acres Farm', category: 'Vegetable', subcategory: 'Stem', availableDate: '2024-06-05', status: 'Unavailable', quantity: 0, moq: 10, isSeasonal: true },
+    { id: 'imp1', name: 'Zucchini', price: 1.75, unit: 'each', imageUrl: 'https://placehold.co/400x300?text=Zucchini', farmer: 'Green Acres Farm', category: 'Vegetable', subcategory: 'Fruit Vegetable', availableDate: '2024-06-10', status: 'Available', quantity: 90, moq: 12, isSeasonal: true },
+    { id: 'imp2', name: 'Strawberries', price: 5.50, unit: 'quart', imageUrl: 'https://placehold.co/400x300?text=Strawberries', farmer: 'Green Acres Farm', category: 'Fruit', subcategory: 'Berry', availableDate: '2024-06-15', status: 'Available', quantity: 60, moq: 1, isSeasonal: true },
 ];
 
 
@@ -392,21 +679,23 @@ export const mockTickets: Ticket[] = [
     { id: 't3', userId: 'biz1', userName: 'The Grand Restaurant', userRole: 'business', subject: 'Incorrect produce in order o2', description: 'We received spinach instead of kale in our last order.', status: 'Resolved', priority: 'Medium', createdDate: '2023-10-30' },
 ];
 
-export const mockSourcedProducts: SourcedProduct[] = [
-    { id: 'sp1', name: 'Organic Carrots', baseProductName: 'Carrots', supplierId: 'f1', supplierName: 'Green Acres Farm', costPrice: 1.80, unit: 'bunch', imageUrl: 'https://picsum.photos/id/1080/400/300', category: 'Vegetable', publishStatus: 'published', sellingPrice: 2.50, publishTarget: ['retail', 'wholesale'], availableQuantity: 55 },
-    { id: 'sp1_alt', name: 'Carrots', baseProductName: 'Carrots', supplierId: 'f4', supplierName: 'Prairie Harvest', costPrice: 1.65, unit: 'bunch', imageUrl: 'https://picsum.photos/id/1080/400/300', category: 'Vegetable', publishStatus: 'unpublished', availableQuantity: 120 },
-    { id: 'sp2', name: 'Heirloom Tomatoes', baseProductName: 'Tomatoes', supplierId: 'f2', supplierName: 'Sunnyvale Orchards', costPrice: 2.90, unit: 'lb', imageUrl: 'https://picsum.photos/id/1078/400/300', category: 'Vegetable', publishStatus: 'published', sellingPrice: 4.00, publishTarget: ['retail'], availableQuantity: 8 },
-    { id: 'sp2_alt', name: 'Roma Tomatoes', baseProductName: 'Tomatoes', supplierId: 'f1', supplierName: 'Green Acres Farm', costPrice: 2.75, unit: 'lb', imageUrl: 'https://picsum.photos/id/1078/400/300', category: 'Vegetable', publishStatus: 'unpublished', availableQuantity: 60 },
-    { id: 'sp3', name: 'Red Bell Peppers', baseProductName: 'Peppers', supplierId: 'f1', supplierName: 'Green Acres Farm', costPrice: 1.05, unit: 'each', imageUrl: 'https://picsum.photos/id/1025/400/300', category: 'Vegetable', publishStatus: 'unpublished', availableQuantity: 150 },
-    { id: 'sp4', name: 'Spinach', baseProductName: 'Spinach', supplierId: 'f3', supplierName: 'Riverbend Gardens', costPrice: 2.10, unit: 'bag', imageUrl: 'https://picsum.photos/id/292/400/300', category: 'Vegetable', publishStatus: 'published', sellingPrice: 3.00, publishTarget: ['retail'], availableQuantity: 40 },
-    { id: 'sp5', name: 'Gala Apples', baseProductName: 'Apples', supplierId: 'f2', supplierName: 'Sunnyvale Orchards', costPrice: 2.50, unit: 'lb', imageUrl: 'https://picsum.photos/id/431/400/300', category: 'Fruit', publishStatus: 'unpublished', availableQuantity: 200 },
-    { id: 'sp6', name: 'Cucumbers', baseProductName: 'Cucumbers', supplierId: 'f3', supplierName: 'Riverbend Gardens', costPrice: 0.70, unit: 'each', imageUrl: 'https://picsum.photos/id/202/400/300', category: 'Vegetable', publishStatus: 'unpublished', availableQuantity: 100 },
-    { id: 'sp7', name: 'Potatoes (5lb)', baseProductName: 'Potatoes', supplierId: 'f4', supplierName: 'Prairie Harvest', costPrice: 1.95, unit: '5lb bag', imageUrl: 'https://picsum.photos/id/1043/400/300', category: 'Vegetable', publishStatus: 'published', sellingPrice: 2.75, publishTarget: ['wholesale'], availableQuantity: 9 },
-    { id: 'sp7_alt', name: 'Russet Potatoes', baseProductName: 'Potatoes', supplierId: 'f1', supplierName: 'Green Acres Farm', costPrice: 2.15, unit: '5lb bag', imageUrl: 'https://picsum.photos/id/1043/400/300', category: 'Vegetable', publishStatus: 'unpublished', availableQuantity: 80 },
-    { id: 'sp8', name: 'Onions', baseProductName: 'Onions', supplierId: 'f3', supplierName: 'Riverbend Gardens', costPrice: 0.90, unit: 'lb', imageUrl: 'https://picsum.photos/id/1079/400/300', category: 'Vegetable', publishStatus: 'published', sellingPrice: 1.25, publishTarget: ['retail', 'wholesale'], availableQuantity: 110 },
-    { id: 'sp9', name: 'Zucchini', baseProductName: 'Zucchini', supplierId: 'f1', supplierName: 'Green Acres Farm', costPrice: 1.25, unit: 'each', imageUrl: 'https://picsum.photos/id/211/400/300', category: 'Vegetable', publishStatus: 'unpublished', availableQuantity: 70 },
-    { id: 'sp10', name: 'Strawberries', baseProductName: 'Strawberries', supplierId: 'f1', supplierName: 'Green Acres Farm', costPrice: 4.00, unit: 'quart', imageUrl: 'https://picsum.photos/id/1082/400/300', category: 'Fruit', publishStatus: 'published', sellingPrice: 5.50, publishTarget: ['retail'], availableQuantity: 0 },
-];
+// Mapping over standard products to create sourced products for admin view
+export const mockSourcedProducts: SourcedProduct[] = mockProducts.map(p => ({
+    id: `sp-${p.id}`,
+    name: p.name,
+    baseProductName: p.name,
+    supplierId: 'f1', // Simplifying for mock
+    supplierName: p.farmer,
+    costPrice: p.price * 0.6, // Assuming 40% margin
+    unit: p.unit,
+    imageUrl: p.imageUrl,
+    category: p.category || 'Vegetable',
+    publishStatus: 'published',
+    sellingPrice: p.price,
+    publishTarget: ['retail', 'wholesale'],
+    availableQuantity: p.quantity
+}));
+
 
 export const mockPayments: Payment[] = [
     { id: 'pay_1', orderId: 'o1', userId: 'u1', userName: 'Jane Doe', amount: 30.50, date: '2023-10-26', status: 'Completed', method: 'Credit Card' },
