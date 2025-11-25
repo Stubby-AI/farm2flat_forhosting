@@ -276,41 +276,34 @@ const CartView: React.FC<{ items: CartItem[]; cartTotal: number; updateQuantity:
 );
 
 const AuthView: React.FC<{ onAuthSuccess: (user: User) => void }> = ({ onAuthSuccess }) => {
-    const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
-    const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        const userToLogin = activeTab === 'signup' ? { ...mockUser, name, email, id: `u${Date.now()}` } : mockUser;
-        onAuthSuccess(userToLogin);
+        setError('');
+        
+        if (email === 'ami@gmail.com' && password === 'Ami12345') {
+            onAuthSuccess({ ...mockUser, name: 'Ami', email: 'ami@gmail.com' });
+        } else {
+            setError('Invalid credentials. Access is restricted.');
+        }
     };
     
-    const handleGuest = () => {
-        onAuthSuccess({ ...mockUser, id: 'guest', name: 'Guest User' });
-    }
-
     return (
         <div className="container mx-auto px-6 py-12 flex justify-center">
             <div className="w-full max-w-md">
                 <div className="bg-white p-8 rounded-lg shadow-lg">
-                    <div className="flex border-b mb-6">
-                        <button onClick={() => setActiveTab('signin')} className={`flex-1 py-2 font-semibold ${activeTab === 'signin' ? 'border-b-2 border-green-500 text-green-600' : 'text-gray-500'}`}>Sign In</button>
-                        <button onClick={() => setActiveTab('signup')} className={`flex-1 py-2 font-semibold ${activeTab === 'signup' ? 'border-b-2 border-green-500 text-green-600' : 'text-gray-500'}`}>Create Account</button>
-                    </div>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Sign In</h2>
                     <form onSubmit={handleSubmit}>
-                        {activeTab === 'signup' && (
-                            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Full Name" className="p-3 border rounded w-full mb-4" required />
-                        )}
                         <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email Address" className="p-3 border rounded w-full mb-4" required />
                         <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" className="p-3 border rounded w-full mb-4" required />
+                        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
                         <button type="submit" className="w-full bg-green-500 text-white py-3 rounded-lg font-semibold hover:bg-green-600 transition">
-                            {activeTab === 'signin' ? 'Sign In' : 'Create Account'}
+                            Sign In
                         </button>
                     </form>
-                    <div className="text-center my-4 text-gray-500">OR</div>
-                    <button onClick={handleGuest} className="w-full bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition">Continue as Guest</button>
                 </div>
             </div>
         </div>
