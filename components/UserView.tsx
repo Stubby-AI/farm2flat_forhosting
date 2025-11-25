@@ -408,7 +408,14 @@ const ConfirmationView: React.FC<{ onContinue: () => void }> = ({ onContinue }) 
 );
 
 
-const PersonalizedSuggestions: React.FC<{ user: User; onGetSuggestions: () => void; suggestions: AISuggestion[]; isLoading: boolean; }> = ({ user, onGetSuggestions, suggestions, isLoading }) => (
+const PersonalizedSuggestions: React.FC<{ 
+    user: User; 
+    onGetSuggestions: () => void; 
+    suggestions: AISuggestion[]; 
+    isLoading: boolean; 
+    onAddToCart: (product: Product) => void;
+    availableProducts: Product[];
+}> = ({ user, onGetSuggestions, suggestions, isLoading, onAddToCart, availableProducts }) => (
     <div className="mb-12 bg-green-50 border-2 border-green-200 border-dashed rounded-lg p-8 text-center">
         <h3 className="text-2xl font-bold text-green-800 mb-2">Just for you, {user.name.split(' ')[0]}!</h3>
         <p className="text-green-700 mb-4">Based on your recent orders, here are some fresh picks we think you'll love.</p>
@@ -418,12 +425,40 @@ const PersonalizedSuggestions: React.FC<{ user: User; onGetSuggestions: () => vo
         {suggestions.length > 0 && !suggestions[0]?.name.includes('Error') && (
             <div className="mt-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {suggestions.map((item, index) => (
-                        <div key={index} className="bg-white p-4 rounded-lg shadow-sm text-left">
-                            <p className="font-bold text-green-800">{item.name}</p>
-                            <p className="text-sm text-green-700">{item.reason}</p>
-                        </div>
-                    ))}
+                    {suggestions.map((item, index) => {
+                        // Find matching product in catalog to allow adding to cart
+                        // Loose matching: check if suggestion name is contained in product name or vice versa
+                        const product = availableProducts.find(p => 
+                            p.name.toLowerCase().includes(item.name.toLowerCase()) || 
+                            item.name.toLowerCase().includes(p.name.toLowerCase())
+                        );
+
+                        return (
+                            <div key={index} className="bg-white p-4 rounded-lg shadow-sm text-left flex flex-col justify-between h-full">
+                                <div>
+                                    <p className="font-bold text-green-800">{item.name}</p>
+                                    <p className="text-sm text-green-700 mb-2">{item.reason}</p>
+                                    {product && (
+                                        <div className="text-xs text-gray-500 mb-2">
+                                            Match: {product.name} - ${product.price.toFixed(2)}
+                                        </div>
+                                    )}
+                                </div>
+                                {product ? (
+                                    <button 
+                                        onClick={() => onAddToCart(product)}
+                                        className="mt-2 w-full bg-green-100 text-green-700 py-2 rounded-md hover:bg-green-200 font-semibold text-sm flex items-center justify-center gap-1"
+                                    >
+                                        <PlusIcon className="w-4 h-4" /> Add to Cart
+                                    </button>
+                                ) : (
+                                    <button disabled className="mt-2 w-full bg-gray-100 text-gray-400 py-2 rounded-md font-semibold text-sm cursor-not-allowed">
+                                        Unavailable
+                                    </button>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
         )}
@@ -518,7 +553,8 @@ const DashboardView: React.FC<{
     isLoadingRecipes: boolean;
     onGenerateRecipes: () => void;
     onSelectRecipe: (recipe: Recipe) => void;
-}> = ({ user, suggestions, isLoadingSuggestions, onGetSuggestions, regionalProducts, recipes, isLoadingRecipes, onGenerateRecipes, onSelectRecipe }) => {
+    onAddToCart: (product: Product) => void;
+}> = ({ user, suggestions, isLoadingSuggestions, onGetSuggestions, regionalProducts, recipes, isLoadingRecipes, onGenerateRecipes, onSelectRecipe, onAddToCart }) => {
     return (
         <div>
             <h3 className="text-2xl font-bold mb-6 text-gray-800">My Dashboard</h3>
@@ -528,6 +564,8 @@ const DashboardView: React.FC<{
                 onGetSuggestions={onGetSuggestions} 
                 suggestions={suggestions} 
                 isLoading={isLoadingSuggestions} 
+                onAddToCart={onAddToCart}
+                availableProducts={regionalProducts}
             />
 
             <div className="my-12">
@@ -610,6 +648,7 @@ const ProfileView: React.FC<{
                         isLoadingRecipes={isLoadingRecipes}
                         onGenerateRecipes={onGenerateRecipes}
                         onSelectRecipe={onSelectRecipe}
+                        onAddToCart={onAddToCart}
                     />
                 );
             case 'orders':
@@ -1084,6 +1123,17 @@ const UserView: React.FC = () => {
                                  <button onClick={() => setCurrentView('AUTH')} className="mt-4 bg-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-700">Sign Up / Sign In</button>
                              </div>
                          )}
+
+                         {isAuthenticated && currentUser && (
+                            <PersonalizedSuggestions 
+                                user={currentUser}
+                                onGetSuggestions={handleGetSuggestions}
+                                suggestions={suggestions}
+                                isLoading={isLoadingSuggestions}
+                                onAddToCart={cart.addToCart}
+                                availableProducts={regionalProducts}
+                            />
+                        )}
 
                         <div className="">
                             <h2 className="text-3xl font-bold text-gray-800 mb-6">Fresh from the Farm Catalog</h2>
