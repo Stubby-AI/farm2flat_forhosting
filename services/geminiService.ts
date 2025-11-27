@@ -1,106 +1,88 @@
-import { GoogleGenAI, Type } from "@google/genai";
-import { Product, Order, AISuggestion, Recipe } from "../types";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import type { Product, Order, AISuggestion, Recipe } from "../types";
 
-const apiKey = process.env.NEXT_PUBLIC_API_KEY;
+// VITE ENV VARIABLE
+const apiKey = import.meta.env.VITE_API_KEY;
 
+// Check API KEY
 if (!apiKey) {
-  console.warn("NEXT_PUBLIC_API_KEY not set.");
+  console.error("❌ VITE_API_KEY not set in .env.local");
 }
 
+// Init Gemini Client
+const genAI = new GoogleGenerativeAI(apiKey);
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-// Init AI client
-const ai = new GoogleGenAI({ apiKey: apiKey! });
-
-// -------------------- 1. Suggestions --------------------
-
+/* ---------------------------------------------------------
+   1. Personalized Suggestions
+--------------------------------------------------------- */
 export const getPersonalizedSuggestions = async (
   purchaseHistory: Product[]
 ): Promise<AISuggestion[]> => {
-  
   if (!apiKey) {
-    return [
-      { name: "API Key not configured.", reason: "Please set NEXT_PUBLIC_API_KEY." }
-    ];
+    return [{ name: "API Key Missing", reason: "Add VITE_API_KEY in .env.local" }];
   }
 
   const productNames = purchaseHistory.map(p => p.name).join(", ");
 
   const prompt = `
     A user frequently buys: ${productNames}.
-    Suggest 3 fresh produce items and give a short reason for each.
+    Suggest 3 new items with short reasons.
+    Return JSON ONLY:
+    {
+      "suggestions": [
+        {"name": "...", "reason": "..."}
+      ]
+    }
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            suggestions: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  name: { type: Type.STRING },
-                  reason: { type: Type.STRING }
-                }
-              }
-            }
-          }
-        }
-      }
-    });
+    const response = await model.generateContent(prompt);
+    const text = response.response.text();
 
-    const json = JSON.parse(response.text);
+    const json = JSON.parse(text);
     return json.suggestions || [];
 
   } catch (err) {
     console.error("Gemini Suggestion Error:", err);
-    return [{ name: "Error", reason: "AI suggestions failed." }];
+    return [{ name: "AI Error", reason: "Failed to generate suggestions." }];
   }
 };
 
-// -------------------- 2. Demand Forecast --------------------
-
+/* ---------------------------------------------------------
+   2. Demand Forecast
+--------------------------------------------------------- */
 export const getDemandForecast = async (
   orders: Order[]
 ): Promise<Record<string, number>> => {
-
   if (!apiKey) return { "API Key Missing": 0 };
 
   const productCounts = orders
-    .flatMap(o => o.items)
-    .filter(i => i.type === "product")
+    .flatMap(order => order.items)
+    .filter(item => item.type === "product")
     .reduce((acc, item) => {
       acc[item.name] = (acc[item.name] || 0) + item.quantity;
       return acc;
     }, {} as Record<string, number>);
 
-  const productSummary = Object.entries(productCounts)
+  const summary = Object.entries(productCounts)
     .map(([name, qty]) => `${name}: ${qty}`)
     .join(", ");
 
   const prompt = `
-    Using these sales numbers: ${productSummary}.
+    Based on sales: ${summary},
     Predict top 5 product demand for next cycle.
-    Return as "Carrots:50,Tomatoes:40,..." only values.
+    Return strictly like: Carrots:50, Tomatoes:40, ...
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt
-    });
+    const response = await model.generateContent(prompt);
+    const text = response.response.text();
 
-    const text = response.text;
     const forecast: Record<string, number> = {};
-
-    text.split(",").forEach(p => {
-      const [key, val] = p.split(":");
-      if (key && !isNaN(Number(val))) {
+    text.split(",").forEach(item => {
+      const [key, val] = item.split(":");
+      if (key && val && !isNaN(Number(val))) {
         forecast[key.trim()] = Number(val.trim());
       }
     });
@@ -113,72 +95,37 @@ export const getDemandForecast = async (
   }
 };
 
-// -------------------- 3. Recipe Generator --------------------
-
+/* ---------------------------------------------------------
+   3. Recipe Generator
+--------------------------------------------------------- */
 export const generateRecipes = async (
   availableProducts: Product[]
 ): Promise<Recipe[]> => {
-
-  if (!apiKey) {
-    console.error("API Key missing.");
-    return [];
-  }
+  if (!apiKey) return [];
 
   const list = availableProducts.map(p => p.name).join(", ");
 
   const prompt = `
-    Available items: ${list}.
-    Generate 3 recipes with:
-    - name
-    - description
-    - ingredients (separate store items & pantry items)
-    - step-by-step instructions
-    - imageUrl using picsum.photos/id/XXX
+    Available: ${list}.
+    Generate 3 recipes.
+    Each must include:
+      - name
+      - description
+      - imageUrl (use picsum.photos)
+      - ingredients[{name, quantity, isStoreItem}]
+      - instructions[]
+    Return JSON ONLY:
+    { "recipes": [...] }
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            recipes: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  id: { type: Type.STRING },
-                  name: { type: Type.STRING },
-                  description: { type: Type.STRING },
-                  imageUrl: { type: Type.STRING },
-                  ingredients: {
-                    type: Type.ARRAY,
-                    items: {
-                      type: Type.OBJECT,
-                      properties: {
-                        name: { type: Type.STRING },
-                        quantity: { type: Type.STRING },
-                        isStoreItem: { type: Type.BOOLEAN }
-                      }
-                    }
-                  },
-                  instructions: { type: Type.ARRAY, items: { type: Type.STRING } }
-                }
-              }
-            }
-          }
-        }
-      }
-    });
-
-    const json = JSON.parse(response.text);
+    const response = await model.generateContent(prompt);
+    const text = response.response.text();
+    const json = JSON.parse(text);
 
     return json.recipes.map((recipe: Recipe, index: number) => ({
       ...recipe,
-      id: recipe.id || `recipe-${Date.now()}-${index}`,
+      id: recipe.id || `recipe-${Date.now()}-${index}`
     }));
 
   } catch (err) {
