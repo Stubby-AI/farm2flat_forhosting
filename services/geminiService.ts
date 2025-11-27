@@ -3,10 +3,10 @@ import { Product, Order, AISuggestion, Recipe } from "../types";
 
 const apiKey = process.env.NEXT_PUBLIC_API_KEY;
 
-// Warn if missing key
 if (!apiKey) {
-  console.warn("NEXT_PUBLIC_API_KEY is not set. Gemini API calls will fail.");
+  console.warn("NEXT_PUBLIC_API_KEY not set.");
 }
+
 
 // Init AI client
 const ai = new GoogleGenAI({ apiKey: apiKey! });
