@@ -2,7 +2,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Product, Order, AISuggestion, Recipe } from "../types";
 
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const apiKey = process.env.NEXT_PUBLIC_API_KEY;
+
 
 if (!API_KEY) {
   console.warn("API_KEY is not set. Gemini API calls will fail.");
