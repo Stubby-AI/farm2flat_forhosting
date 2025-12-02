@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { mockPortalUsers, mockUser, mockDrivers, mockVehicles, mockRoutes, mockSeasonalTrends, mockCampaigns, mockTickets, mockFarmers, mockSourcedProducts, mockSubscriptionBoxes, mockPayments, mockInvoices, mockOrders, mockProducts } from '../mock/data';
 import { SourcedProduct, SubscriptionBox, Payment, Invoice, User, Order, Product, Ticket } from '../types';
@@ -28,11 +29,11 @@ const AdminView: React.FC<AdminViewProps> = ({ onLogout }) => {
   const [publishingFilter, setPublishingFilter] = useState<string[] | null>(null);
 
 
-  const handlePublishProduct = (productId: string, sellingPrice: number, publishTarget: ('retail' | 'wholesale')[], availableQuantity: number) => {
+  const handlePublishProduct = (productId: string, sellingPrice: number, publishTarget: ('retail' | 'wholesale')[], availableQuantity: number, moq?: number) => {
       setSourcedProducts(prevProducts =>
           prevProducts.map(p =>
               p.id === productId
-                  ? { ...p, sellingPrice, publishTarget, publishStatus: 'published', availableQuantity }
+                  ? { ...p, sellingPrice, publishTarget, publishStatus: 'published', availableQuantity, moq }
                   : p
           )
       );
@@ -530,12 +531,13 @@ const SupplierManagementView: React.FC = () => (
 const ProductPublishingView: React.FC<{ 
     products: SourcedProduct[],
     allProducts: SourcedProduct[],
-    onPublish: (productId: string, price: number, target: ('retail' | 'wholesale')[], quantity: number) => void,
+    onPublish: (productId: string, price: number, target: ('retail' | 'wholesale')[], quantity: number, moq?: number) => void,
     isFiltered?: boolean,
     onClearFilter?: () => void
 }> = ({ products, allProducts, onPublish, isFiltered, onClearFilter }) => {
     const [price, setPrice] = useState<Record<string, string>>({});
     const [quantity, setQuantity] = useState<Record<string, string>>({});
+    const [moq, setMoq] = useState<Record<string, string>>({});
     const [target, setTarget] = useState<Record<string, ('retail' | 'wholesale')[]>>({});
 
     const cheapestProductsMap = useMemo(() => {
@@ -575,8 +577,10 @@ const ProductPublishingView: React.FC<{
     }, [products]);
 
     const handlePublish = (id: string) => {
-        const finalPrice = parseFloat(price[id] || '0');
+        const product = products.find(p => p.id === id);
+        const finalPrice = price[id] ? parseFloat(price[id]) : (product?.costPrice || 0);
         const finalQuantity = parseInt(quantity[id] || '0', 10);
+        const finalMoq = moq[id] ? parseInt(moq[id], 10) : undefined;
         const finalTarget = target[id] || [];
 
         if (finalPrice <= 0) {
@@ -591,7 +595,7 @@ const ProductPublishingView: React.FC<{
             alert('Please select at least one target channel.');
             return;
         }
-        onPublish(id, finalPrice, finalTarget, finalQuantity);
+        onPublish(id, finalPrice, finalTarget, finalQuantity, finalMoq);
     };
 
     return (
@@ -619,6 +623,7 @@ const ProductPublishingView: React.FC<{
                             <th className="p-4 font-semibold text-gray-600 uppercase tracking-wider flex items-center gap-2"><SparklesIcon className="w-5 h-5 text-indigo-500" /> AI Insight</th>
                             <th className="p-4 font-semibold text-gray-600 uppercase tracking-wider">Set Selling Price</th>
                             <th className="p-4 font-semibold text-gray-600 uppercase tracking-wider">Set Avail. Qty</th>
+                            <th className="p-4 font-semibold text-gray-600 uppercase tracking-wider">MOQ</th>
                             <th className="p-4 font-semibold text-gray-600 uppercase tracking-wider">Publish To</th>
                             <th className="p-4 font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                         </tr>
@@ -641,17 +646,30 @@ const ProductPublishingView: React.FC<{
                                             type="number" 
                                             step="0.01" 
                                             placeholder="e.g., 2.99"
+                                            value={price[product.id] ?? product.costPrice}
                                             className="p-2 border rounded-md w-28"
                                             onChange={(e) => setPrice(p => ({...p, [product.id]: e.target.value}))}
                                         />
                                     </td>
                                     <td className="p-4">
+                                        <div className="flex items-center gap-2">
+                                            <input 
+                                                type="number" 
+                                                step="1" 
+                                                placeholder="e.g., 100"
+                                                className="p-2 border rounded-md w-20"
+                                                onChange={(e) => setQuantity(q => ({...q, [product.id]: e.target.value}))}
+                                            />
+                                            <span className="text-gray-500 text-sm">{product.unit}</span>
+                                        </div>
+                                    </td>
+                                    <td className="p-4">
                                         <input 
                                             type="number" 
                                             step="1" 
-                                            placeholder="e.g., 100"
-                                            className="p-2 border rounded-md w-28"
-                                            onChange={(e) => setQuantity(q => ({...q, [product.id]: e.target.value}))}
+                                            placeholder="MOQ"
+                                            className="p-2 border rounded-md w-20"
+                                            onChange={(e) => setMoq(m => ({...m, [product.id]: e.target.value}))}
                                         />
                                     </td>
                                     <td className="p-4">
@@ -700,6 +718,7 @@ const PublishedProductsView: React.FC<{ title: string, products: SourcedProduct[
                         <th className="p-4">Selling Price</th>
                         <th className="p-4">Unit</th>
                         <th className="p-4">Avail. Qty</th>
+                        <th className="p-4">MOQ</th>
                         <th className="p-4">Margin</th>
                     </tr>
                 </thead>
@@ -722,6 +741,7 @@ const PublishedProductsView: React.FC<{ title: string, products: SourcedProduct[
                                     <span>{product.availableQuantity}</span>
                                 )}
                             </td>
+                            <td className="p-4">{product.moq || '-'}</td>
                             <td className="p-4 font-semibold text-green-700">
                                 {product.sellingPrice ? `${(((product.sellingPrice - product.costPrice) / product.costPrice) * 100).toFixed(0)}%` : 'N/A'}
                             </td>
