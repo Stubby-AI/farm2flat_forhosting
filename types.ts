@@ -1,3 +1,4 @@
+
 export interface Product {
   id: string;
   name: string;
@@ -238,6 +239,7 @@ export interface SourcedProduct {
   publishTarget?: ('retail' | 'wholesale')[];
   baseProductName?: string;
   availableQuantity?: number;
+  moq?: number;
 }
 
 export interface Payment {
